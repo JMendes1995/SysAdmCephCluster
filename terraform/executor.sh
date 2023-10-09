@@ -12,6 +12,8 @@ main(){
       plan
    elif [ "$execution_type" == "apply" ]; then
       apply
+   elif [ "$execution_type" == "destroy" ]; then
+      destroy      
    else
       echo "exec type => $execution_type not valid"
    fi
@@ -32,6 +34,10 @@ plan(){
 
 apply(){
    terraform apply \
+      -var-file=env.tfvars 
+}
+destroy(){
+   terraform destroy \
       -var-file=env.tfvars 
 }
 
