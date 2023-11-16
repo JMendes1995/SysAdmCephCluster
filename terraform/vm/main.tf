@@ -13,3 +13,4 @@ module "vm" {
     scopes = ["cloud-platform"]
     users_ssh_info = join(",\n", [for key, value in var.users_ssh_info : "${key}:${value} ${key}"])
 }
+

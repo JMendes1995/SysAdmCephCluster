@@ -34,11 +34,11 @@ plan(){
 
 apply(){
    terraform apply \
-      -var-file=env.tfvars 
+      -var-file=env.tfvars -auto-approve
 }
 destroy(){
    terraform destroy \
-      -var-file=env.tfvars 
+      -var-file=env.tfvars -auto-approve
 }
 
 if [[ ! -n $1 ]];

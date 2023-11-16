@@ -13,9 +13,6 @@ variable "vpc_id" {
 variable "subnet" {
   type = string
 }
-variable "ssh_key_pub"{
-  type = string
-}
 variable "image"{
   type = string
 }
@@ -29,6 +26,15 @@ variable "tags"{
 variable "scopes"{
   type = list(string)
 }
-variable "users_ssh_info"{
+variable "ssh_pub"{
+  type = string
+  sensitive = true
+}
+
+variable "public_instance"{
+  type = bool
+}
+
+variable "username"{
   type = string
 }

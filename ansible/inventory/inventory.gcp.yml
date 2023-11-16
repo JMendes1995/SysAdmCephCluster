@@ -1,0 +1,14 @@
+plugin: gcp_compute
+projects:
+  - sysadmcephcluster
+region: europe-west4
+hostnames:
+  - public_ip
+  - private_ip
+groups:
+  bastion: "'bastion' in name"
+  debian: "'debian' in name"
+auth_kind: serviceaccount
+service_account_file: ~/sysadmcephcluster-7893cafdba84.json
+
+
