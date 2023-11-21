@@ -42,8 +42,8 @@ module "FirewallRule_public" {
     rule_name = "public-network-rules"
     vpc_id = module.Network.vpc_id
     protocol = "tcp"
-    ports=["22","443", "80"]
-    source_ranges = [var.ip_isp_pub, "10.10.0.0/24"]
+    ports=["22"]
+    source_ranges = ["0.0.0.0/0"]
     desitnation_ranges = ["0.0.0.0/0"]
     project_id = var.project_id
     depends_on = [module.Network ]

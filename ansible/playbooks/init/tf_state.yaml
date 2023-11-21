@@ -1,0 +1,10 @@
+---
+- hosts: 127.0.0.1
+  tags: [ 'apply', "destroy" ]
+  tasks:
+  - name: tf_state_bucket
+    shell: | 
+      cd ../../../terraform/tf_state_bucket/ 
+      terraform {{ command }} -var-file=../env.tfvars -auto-approve
+
+      

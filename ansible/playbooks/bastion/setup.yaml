@@ -12,12 +12,15 @@
     with_items:
       - idrsa.pub
       - idrsa
+
   - name: change ssh_kyes ownership to bastion
     command: chown -R bastion:bastion /home/bastion/.ssh/
+
   - name: add ssh agent 
     shell: |
       eval "$(ssh-agent)"
-      ssh-add /home/bastion/.ssh/idrsa      
+      ssh-add /home/bastion/.ssh/idrsa     
+       
 - hosts: 127.0.0.1
   connection: local
   become: true

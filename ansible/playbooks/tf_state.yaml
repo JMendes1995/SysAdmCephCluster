@@ -1,7 +1,0 @@
----
-- hosts: 127.0.0.1
-  tasks:
-  - name: tf_state_bucket
-    shell: | 
-      cd ../../terraform/tf_state_bucket/ 
-      terraform {{ command }} -var-file=../../terraform/env.tfvars -auto-approve
