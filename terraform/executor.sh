@@ -34,7 +34,7 @@ plan(){
 
 apply(){
    terraform apply \
-      -var-file=env.tfvars -auto-approve
+      -var-file=env.tfvars #-auto-approve
 }
 destroy(){
    terraform destroy \

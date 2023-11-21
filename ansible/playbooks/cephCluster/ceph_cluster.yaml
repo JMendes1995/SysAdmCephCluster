@@ -1,0 +1,11 @@
+  
+- hosts: ceph_node
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../../variables/var.yml
+  tasks:
+    - include: setup_node.yaml
+    - include: monitor.yaml
+    - include: manager.yaml
+    - include: object_storage_device.yaml

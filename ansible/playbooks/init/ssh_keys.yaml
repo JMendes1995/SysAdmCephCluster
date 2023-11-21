@@ -3,7 +3,7 @@
   connection: local
 - name: setup greeting-app
   hosts: 127.0.0.1
-  tags: [ 'init' ]
+  tags: [ 'ssh_keys' ]
   tasks:
     - name: create bastion ssh-keys 
       run_once: true

@@ -1,0 +1,5 @@
+- name: create RBD pool
+  shell: ceph osd pool create rbd 64
+  tags: cehp_client
+
+- name: enable Groups autoscale mode

@@ -20,6 +20,11 @@ resource "google_compute_instance" "public_vm" {
         preemptible = true
         automatic_restart = false
     }
+    # to be removed for test porpuse
+    attached_disk {
+      source      = google_compute_disk.default.id
+      device_name = google_compute_disk.default.name
+    }
     network_interface {
       network = var.vpc_id
       access_config {}
@@ -38,6 +43,14 @@ resource "google_compute_instance" "public_vm" {
       email  = data.google_compute_default_service_account.default.email
       scopes = var.scopes
     }
+}
+
+resource "google_compute_disk" "storage_divice" {
+  count = var.storage_device_number
+  name = "${var.storage_device_name}-${count.index}"
+  type =  storage_device_type
+  zone = data.google_compute_zones.available_zones.names[count.index]
+  size = var.storage_device_size
 }
 
 
@@ -60,7 +73,10 @@ resource "google_compute_instance" "private_vm" {
       network = var.vpc_id
       subnetwork = var.subnet
     }
-
+    attached_disk {
+      source      = google_compute_disk.storage_divice.id
+      device_name = google_compute_disk.storage_divice.[].name
+    }
     tags = var.tags
     metadata = {
       "ssh-keys" =  "${var.username}:${var.ssh_pub} ${var.username}:"

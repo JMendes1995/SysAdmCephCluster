@@ -21,7 +21,7 @@
           - private_ip
         groups:
           bastion: "'bastion' in name"
-          debian: "'debian' in name"
+          ceph_node: "'ceph_node' in name"
         auth_kind: serviceaccount
         service_account_file: {{ service_account_file }}
         EOF

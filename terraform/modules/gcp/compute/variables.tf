@@ -34,7 +34,18 @@ variable "ssh_pub"{
 variable "public_instance"{
   type = bool
 }
-
 variable "username"{
+  type = string
+}
+variable "storage_device_number"{
+  type = string
+}
+variable "storage_device_name"{
+  type = string
+}
+variable "storage_device_type"{
+  type = string
+}
+variable "storage_device_size"{
   type = string
 }

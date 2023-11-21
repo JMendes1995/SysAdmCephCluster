@@ -1,0 +1,71 @@
+
+- name: Install software
+  tags: ['ceph_node']
+  shell: |
+    apt -y update 
+    apt -y install ceph
+
+- name: Install software
+  tags: ['ceph_client']
+  shell: |
+    apt -y update 
+    apt -y install ceph-common
+    
+- name: generate uuid
+  tags: ['ceph_admin']
+  shell: uuidgen
+  register: uuid
+- name: generate cepth configuration
+  tags: ['ceph_node']
+  shell: |
+    echo "" > /etc/ceph/ceph.conf 
+    tee -a /etc/ceph/ceph.conf << EOF
+    [global]
+    # specify cluster network for monitoring
+    cluster network = {{ bastion_network_cidr }}
+    # specify public network
+    public network = {{ bastion_network_cidr }}
+    # specify UUID genarated above
+    fsid = {{ item.uuid }}
+    # specify IP address of Monitor Daemon
+    mon host = {{ item.private_ip }}
+    # specify Hostname of Monitor Daemon
+    mon initial members = {{ item.instance_name }}
+    osd pool default crush rule = -1
+    
+    # mon.(Node name)
+    [mon.{{ item.instance_name }}]
+    # specify Hostname of Monitor Daemon
+    host = {{ item.instance_name }}
+    # specify IP address of Monitor Daemon
+    mon addr = {{ item.private_ip }}
+    # allow to delete pools
+    mon allow pool delete = true
+    EOF
+  with_items: 
+    - { uuid: "{{ uuid.stdout }}", 
+        instance_name: "{{ hostvars[inventory_hostname].name }}", 
+        private_ip: "{{ hostvars[inventory_hostname].networkInterfaces[0].networkIP }}"
+      }
+    #- "{{ hostvars[inventory_hostname].disks }}" # disks mountd
+- name: genarate secret key for cluster moniotring and bootstrap
+  tags: ['ceph_admin']
+  shell: |
+    ceph-authtool --create-keyring /etc/ceph/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+    ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+    ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+- name: import keys
+  tags: ['ceph_admin']
+  shell: | 
+    ceph-authtool /etc/ceph/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
+    ceph-authtool /etc/ceph/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+- name: generate monitor map
+  tags: ['ceph_admin']
+  shell: monmaptool --create --add {{ item.instance_name }} {{ item.private_ip }} --fsid {{ item.uuid }} /etc/ceph/monmap
+  with_items: 
+    - { uuid: "{{ uuid.stdout }}", 
+        instance_name: "{{ hostvars[inventory_hostname].name }}", 
+        private_ip: "{{ hostvars[inventory_hostname].networkInterfaces[0].networkIP }}"
+      }
+
+    

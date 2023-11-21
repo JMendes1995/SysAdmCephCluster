@@ -14,6 +14,7 @@ module "debian" {
     #users_ssh_info = join(",\n", [for key, value in var.users_ssh_info : "${key}:${value} ${key}"])
     ssh_pub = file(var.path_local_public_key)
     username = "bastion"
+    region = "${var.region}-a"
 }
 
 
@@ -32,4 +33,5 @@ module "fedora_server" {
     #users_ssh_info = join(",\n", [for key, value in var.users_ssh_info : "${key}:${value} ${key}"])
     ssh_pub = file(var.path_local_public_key)
     username = "bastion"
+    region = "${var.region}-a"
 }
