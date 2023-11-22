@@ -37,15 +37,9 @@ variable "public_instance"{
 variable "username"{
   type = string
 }
-variable "storage_device_number"{
+variable "defaul_sa_name"{
   type = string
 }
-variable "storage_device_name"{
-  type = string
-}
-variable "storage_device_type"{
-  type = string
-}
-variable "storage_device_size"{
-  type = string
+variable "available_zones"{
+  type = list
 }

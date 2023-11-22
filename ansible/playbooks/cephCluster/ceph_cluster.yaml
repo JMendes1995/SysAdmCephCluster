@@ -1,5 +1,5 @@
   
-- hosts: ceph_node
+- hosts: osd_node
   remote_user: bastion
   become: true
   vars_files:

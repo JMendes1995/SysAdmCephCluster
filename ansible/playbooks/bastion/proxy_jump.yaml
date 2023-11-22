@@ -3,10 +3,9 @@
   become: true
 - name: update ssh_config with proxy jump
   hosts: 127.0.0.1
-  tags: [ 'proxy_jump' ]
+  tags: proxy_jump
   tasks:
     - name: update ssh_conf for network 10.10.*
-      run_once: true
       become: true
       shell: |
         tee -a /etc/ssh/ssh_config << END

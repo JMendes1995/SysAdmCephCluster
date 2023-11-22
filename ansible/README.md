@@ -29,7 +29,7 @@ tags: single of multiple value field (options: init, apply, destroy, ssh_keys)
 # Bastion Configuration in command
 ## setup bastion initial configurations and proxy jump locally
 ```bash
-ansible-playbook -i inventory/  playbooks/bastion/* --key-file "../ssh_keys/idrsa" --tags setup,proxy_jump -vvv
+ansible-playbook -i inventory/  playbooks/bastion/* --key-file "../ssh_keys/idrsa" --tags setup,proxy_jump --ask-become-pass -vvv
 ```
 
 ## setup bastion initial configurations  
@@ -39,7 +39,7 @@ ansible-playbook -i inventory/  playbooks/bastion/setup.yaml  --key-file "../ssh
 
 ## setup proxy jump locally
 ```bash
-ansible-playbook -i inventory/  playbooks/bastion/proxy_jump.yaml  --tags "proxy_jump" -vvv
+ansible-playbook -i inventory/  playbooks/bastion/proxy_jump.yaml  --tags "proxy_jump" --ask-become-pass -vvv
 ```
 
 ## ceph cluster 
@@ -51,7 +51,9 @@ single run
 ansible-playbook -i inventory/  playbooks/cephCluster/setup_node.yaml  -l bastion --key-file "../ssh_keys/idrsa" --tags ceph_node,ceph_admin,ceph_monitor,ceph_manage"  -v
 ```
 
+ansible-playbook -i inventory/  playbooks/cephCluster/ceph_cluster.yaml  -l osd_node --key-file "../ssh_keys/idrsa" --tags ceph_node,ceph_admin,ceph_osd,ceph_monitor,ceph_manager -v
 
+### client
 
 
 

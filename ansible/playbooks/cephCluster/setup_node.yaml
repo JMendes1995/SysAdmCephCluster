@@ -22,9 +22,9 @@
     tee -a /etc/ceph/ceph.conf << EOF
     [global]
     # specify cluster network for monitoring
-    cluster network = {{ bastion_network_cidr }}
+    cluster network = {{ ceph_cluster_network_cidr }}
     # specify public network
-    public network = {{ bastion_network_cidr }}
+    public network = {{ ceph_cluster_network_cidr }}
     # specify UUID genarated above
     fsid = {{ item.uuid }}
     # specify IP address of Monitor Daemon
