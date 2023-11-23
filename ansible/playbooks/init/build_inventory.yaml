@@ -1,47 +1,19 @@
----
-- hosts: 127.0.0.1
-  connection: local
-- name: build gcp iventory file
-  hosts: 127.0.0.1
-  vars_files:
-    - ../../variables/var.yml
-  tags: [ 'init' ]
-  tasks:
-    - name: create inventory file
-      run_once: true
-      shell: |
-        echo "" > ../../inventory/inventory.gcp.yml
-        tee -a ../../inventory/inventory.gcp.yml << EOF
-        plugin: gcp_compute
-        projects:
-          - sysadmcephcluster
-        region: europe-west4
-        hostnames:
-          - public_ip
-          - private_ip
-        groups:
-          bastion: "'bastion' in name"
-          ceph_node: "'ceph_node' in name"
-        auth_kind: serviceaccount
-        service_account_file: {{ service_account_file }}
-        EOF
-    #- name: check local pub ip
-    #  register: result
-    #  command: curl ifconfig.me
-#
-    #- name: verify if localhost belong to allow list and if not set into allow list
-    #  when:  item  not in list1
-    #  set_fact:
-    #    list1: "{{ list1 + [ item ] }}"
-    #  #command: sed  's/^ip_isp_pub=.*/ip_isp_pub_hello={{ list1 }}/g' ../../../terraform/env_test.tfvars > ../../../terraform/env_test1.tfvars 
-    #  register: updated_ip_list
-    #  with_items: "{{ result.stdout }}"
-    #- name: Print the Numbers after appending
-    #  shell: sed 's/'//' {{ list1 }}
-    #  register: formatedlist
-    #  
-#
-    #- name: update terraform tfvars with allowd ip's
-    #  shell: |
-    #    sed -i -e "s/^ip_isp_pub=.*/ip_isp_pub_hello={{ item }}/g" ../../../terraform/env.tfvars 
-    #  with_items: "{{ formatedlist }}"
+- name: create inventory file
+  shell: |
+    echo "" > ../inventory/inventory.gcp.yml
+    tee -a ../inventory/inventory.gcp.yml << EOF
+    plugin: gcp_compute
+    projects:
+      - sysadmcephcluster
+    region: europe-west4
+    hostnames:
+      - public_ip
+      - private_ip
+    groups:
+      bastion: "'bastion' in name"
+      osd: "'osd' in name"
+      manager: "'manager' in name"
+      monitor: "'monitor' in name"
+    auth_kind: serviceaccount
+    service_account_file: {{ service_account_file }}
+    EOF

@@ -8,6 +8,8 @@ hostnames:
   - private_ip
 groups:
   bastion: "'bastion' in name"
-  osd_node: "'osd-node' in name"
+  osd: "'osd' in name"
+  manager: "'manager' in name"
+  monitor: "'monitor' in name"
 auth_kind: serviceaccount
 service_account_file: ~/sysadmcephcluster-7893cafdba84.json

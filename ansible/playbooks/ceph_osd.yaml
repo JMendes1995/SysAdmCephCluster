@@ -1,0 +1,21 @@
+
+# - name: change ownership to ceph user
+#   tags: ceph_osd
+#   shell: |
+#       chown ceph /etc/ceph/  
+#       chown ceph /etc/ceph/* 
+
+- name: move files to ceph folder
+  tags: ceph_osd
+  shell: |
+    mv /home/bastion/ceph.conf /etc/ceph/ceph.conf
+    mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+    mv /home/bastion/ceph.keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+    chown ceph. /etc/ceph/ceph.* /var/lib/ceph/bootstrap-osd/*
+
+- name: create volume from disk
+  tags: ceph_osd_mount_volume
+  shell: |
+    parted --script /dev/sdb 'mklabel gpt';
+    parted --script /dev/sdb "mkpart primary 0% 100%";
+    ceph-volume lvm create --data /dev/sdb1

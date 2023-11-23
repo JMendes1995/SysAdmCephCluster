@@ -50,7 +50,7 @@ module "FirewallRulePrivate" {
     vpc_id              = module.Network.vpc_id
     protocol            = "tcp"
     ports               = ["22","443", "80", "3300", "6789","6800-7100" ]
-    source_ranges       = ["0.0.0.0/0"]
+    source_ranges       = ["192.168.0.0/24", "10.10.0.0/24"]
     desitnation_ranges  = ["0.0.0.0/0"]
     project_id          = var.project_id
     
@@ -76,16 +76,11 @@ module "FirewallRulePublic" {
     vpc_id              = module.Network.vpc_id
     protocol            = "tcp"
     ports               = ["22", "443"]
-    source_ranges       = ["0.0.0.0/0"]
+    source_ranges       = concat(var.ip_isp_pub, ["10.10.0.0/24"])
     desitnation_ranges  = ["0.0.0.0/0"]
     project_id          = var.project_id
 
     depends_on = [module.Network]
-}
-
-resource "google_service_account" "service_account" {
-  account_id   = "bastion"
-  display_name = "bastion"
 }
 
 module "Bastion" {
@@ -94,17 +89,16 @@ module "Bastion" {
     num_instances       = 1
 
     vm_name             = "bastion"
-    machine_type        = "f1-micro"
+    machine_type        = var.bastion_machine_type
     vpc_id              = module.Network.vpc_id
     subnet              = "pub-subnet"
-    image               = "debian-cloud/debian-11"
-    provisioning_model  = "SPOT"
-    tags                = ["ssh", "bastion"]
-    scopes              = ["cloud-platform"]
+    image               = var.image
+    provisioning_model  = var.bastion_provisioning_model
+    tags                = var.bastion_tags
+    scopes              = var.scopes
     public_instance     = true
-    #users_ssh_info = join(",\n", [for key, value in var.users_ssh_info : "${key}:${value} ${key}"])
     ssh_pub             = file(var.path_local_public_key)
-    username            = "bastion"
+    username            = var.username
 
     defaul_sa_name      = data.google_compute_default_service_account.default_sa.email
     available_zones     = data.google_compute_zones.available_zones.names.*

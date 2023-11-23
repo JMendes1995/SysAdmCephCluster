@@ -1,29 +1,65 @@
 module "Volumes"{
     source = "../modules/gcp/compute/storage"
 
-    storage_device_number   = 1
+    storage_device_number   = var.osd_volumes
     storage_device_name     = "ceph-storage"
-    storage_device_type     = "pd-standard"
-    storage_device_size     = 5
+    storage_device_type     = var.osd_volume_type
+    storage_device_size     = var.osd_volume_sizes_gb
     available_zones         = data.google_compute_zones.available_zones.names.*
-
 }
+
+# module "VolumesZoneA"{
+#     source = "../modules/gcp/compute/storage"
+
+#     storage_device_number   = var.osd_volumes
+#     storage_device_name     = "ceph-storage"
+#     storage_device_type     = var.osd_volume_type
+#     storage_device_size     = var.osd_volume_sizes_gb
+#     available_zones         = "${var.region}-a"
+# }
+
+# module "VolumesZoneB"{
+#     source = "../modules/gcp/compute/storage"
+
+#     storage_device_number   = var.osd_volumes
+#     storage_device_name     = "ceph-storage"
+#     storage_device_type     = var.osd_volume_type
+#     storage_device_size     = var.osd_volume_sizes_gb
+#     available_zones         = "${var.region}-b"
+# }
+# module "VolumesZoneC"{
+#     source = "../modules/gcp/compute/storage"
+
+#     storage_device_number   = var.osd_volumes
+#     storage_device_name     = "ceph-storage"
+#     storage_device_type     = var.osd_volume_type
+#     storage_device_size     = var.osd_volume_sizes_gb
+#     available_zones         = "${var.region}-c"
+# }
 module "CephObjectStorageDevice" {
     source = "../modules/gcp/compute/private_vm"
 
-    num_instances   = 1
-    vm_name             = "osd-node"
-    machine_type        = "f1-micro"
+    num_instances       = var.osd_nodes_number
+    vm_name             = "osd"
+    machine_type        = var.osd_machine_type
     vpc_id              = data.terraform_remote_state.base_tfstate.outputs.vpc_id
     subnet              = data.terraform_remote_state.base_tfstate.outputs.private_subnet_name
     public_instance     = false
-    image               = "debian-cloud/debian-11"
-    provisioning_model  = "SPOT"
-    tags                = ["ssh"]
-    scopes              = ["cloud-platform"]
+    image               = var.image
+    provisioning_model  = var.osd_provisioning_model
+    tags                = var.osd_tags
+    scopes              = var.scopes
     ssh_pub             = file(var.path_local_public_key)
-    username            = "bastion"
+    username            = var.username
     defaul_sa_name      = data.google_compute_default_service_account.default_sa.email
     available_zones     = data.google_compute_zones.available_zones.names.*
-    storage_devices     = module.Volumes.volume_ids
+}
+
+
+
+resource "google_compute_attached_disk" "attached_storage" {
+  count = var.osd_volumes_per_instance*var.osd_nodes_number
+  disk = element(module.Volumes.volume_ids, count.index) 
+  instance = element(module.CephObjectStorageDevice.vm_ids, count.index)  
+  zone = element(data.google_compute_zones.available_zones.names.*, count.index)
 }

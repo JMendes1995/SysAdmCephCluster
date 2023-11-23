@@ -1,0 +1,9 @@
+- hosts: bastion
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../../variables/var.yml
+  tasks:
+    - name: gether osd ip's
+      hosts: osd
+      register: "{{ hostvars['util']['ansible_facts']['distribution'] }}"

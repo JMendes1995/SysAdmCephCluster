@@ -53,6 +53,10 @@ ansible-playbook -i inventory/  playbooks/cephCluster/setup_node.yaml  -l bastio
 
 ansible-playbook -i inventory/  playbooks/cephCluster/ceph_cluster.yaml  -l osd_node --key-file "../ssh_keys/idrsa" --tags ceph_node,ceph_admin,ceph_osd,ceph_monitor,ceph_manager -v
 
+##### latest changes
+
+ansible-playbook -i inventory/  playbooks/cephCluster/ceph_cluster.yaml  --key-file "../ssh_keys/idrsa" --tags ceph_init -v
+
 ### client
 
 
@@ -61,7 +65,47 @@ ansible-playbook -i inventory/  playbooks/cephCluster/ceph_cluster.yaml  -l osd_
 
 
 
-## setup base infrastructure initial configurations  
-```bash
-ansible-playbook -i inventory/  playbooks/base.yaml  -e command=(apply or destroy) -v
-```
+
+
+
+
+
+###########################################
+execution order
+
+---------> generate ssh keys for bastion user
+ansible-playbook -i inventory build_project/generate_ssh_keys.yaml --tags ssh_keys -vv
+
+---------> create tf state bucket build tfvars and build inventory
+ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=(apply or destroy)"  -vv
+
+---------> terraform base 
+./executor.sh base apply
+
+
+---------> generate ssh proxy locally
+ansible-playbook -i inventory bastion/build_local_proxy.yaml --tags proxy_jump --ask-become-pass  -vv
+
+---------> initial setup bastion 
+ansible-playbook -i inventory common/init.yaml -l bastion --tags ceph_init --key-file "../ssh_keys/idrsa"  -vv
+
+
+---------> initial setup all nodes 
+./executor.sh cephManager apply
+./executor.sh cephRDB apply
+./executor.sh cephObjectStorageDevice apply
+
+ansible-playbook -i inventory common/init.yaml -l all --tags ceph_init,ceph_node,ceph_client --key-file "../ssh_keys/idrsa"  -vv
+
+---------> setup ceph manager and monitor
+ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager,ceph_monitor --key-file "../ssh_keys/idrsa"  -vv
+
+setup ceph osd
+ansible-playbook -i inventory cephCluster/cephOSD.yaml -l osd --tags ceph_osd --key-file "../ssh_keys/idrsa"  -vv
+
+setup ceph rdb
+ansible-playbook -i inventory cephCluster/cephRDB.yaml -l rdb --tags ceph_rdb --key-file "../ssh_keys/idrsa"  -vv
+###########################################
+
+
+test cluster    

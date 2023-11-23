@@ -1,0 +1,8 @@
+#- hosts: rdb
+- hosts: manager
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../ceph_cluster_configuration.yml
+  tasks:
+    - include_tasks: ../playbooks/ceph_rdb.yaml

@@ -1,5 +1,5 @@
 - name: setup ceph manager
-  tags: ['ceph_manager']
+  tags: ceph_manager
   shell: |
     mkdir /var/lib/ceph/mgr/ceph-{{ item }}
     ceph auth get-or-create mgr.{{ item }} mon 'allow profile mgr' osd 'allow *' mds 'allow *'
@@ -10,13 +10,22 @@
   with_items: "{{ hostvars[inventory_hostname].name }}"
 
 - name: enable and start manager service
-  tags: ['ceph_manager']
+  tags: ceph_manager
   shell: |
     systemctl enable --now ceph-mgr@{{ item }}
     systemctl start ceph-mgr@{{ item }}
   with_items:  "{{ hostvars[inventory_hostname].name }}"
 - name: test cluster
-  tags: ['ceph_manager']
+  tags: ceph_manager
   shell: ceph -s
 
-    
+- name: copy ceph conf files to nodes
+  tags: ceph_monitor
+  shell: |
+    scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.conf bastion@{{item}}:/home/bastion/
+    scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.client.admin.keyring bastion@{{item}}:/home/bastion/
+    scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /var/lib/ceph/bootstrap-osd/ceph.keyring bastion@{{item}}:/home/bastion/
+  with_items: 
+    - "10.10.0.4"
+    - "10.10.0.3"
+    - "10.10.0.5"

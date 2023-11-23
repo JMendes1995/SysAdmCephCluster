@@ -37,9 +37,6 @@ variable "public_instance"{
 variable "username"{
   type = string
 }
-variable "storage_devices"{
-  
-}
 variable "defaul_sa_name"{
   type = string
 }

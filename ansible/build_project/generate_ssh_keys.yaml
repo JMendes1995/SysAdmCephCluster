@@ -1,0 +1,8 @@
+---
+- hosts: 127.0.0.1
+  connection: local
+  tags: ssh_keys
+  tasks:
+    - name: create bastion ssh-keys 
+      shell: |
+        ssh-keygen -t rsa -b 4096 -f ../../ssh_keys/idrsa -C "bastion" -q -N ""

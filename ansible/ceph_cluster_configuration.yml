@@ -1,0 +1,50 @@
+project_name: SysAdmCephCluster
+region: europe-west4
+zones: 
+  - europe-west4-a
+  - europe-west4-b
+  - europe-west4-c
+project_id: sysadmcephcluster
+bucket_name: sysadm_cepth_cluster_tfstate
+service_account_file: ~/sysadmcephcluster-7893cafdba84.json
+path_local_public_key: ../../ssh_keys/idrsa.pub
+username: bastion
+image: debian-cloud/debian-11
+scopes: ["cloud-platform"]
+allow_ip_list: 
+  - "149.90.112.98/32"
+hosts: {
+  osd: {
+    node_numbers: 3,
+    machine_type: f1-micro,
+    provisioning_model: SPOT,
+    tags: ["ssh", osd],
+    volumes: 1,
+    volumes_per_instance: 1,
+    volume_sizes_gb: 5,
+    volume_type: pd-standard
+  },
+  rdb: {
+    node_numbers: 1,
+    machine_type: f1-micro,
+    provisioning_model: SPOT,
+    tags: ["ssh", rdb]
+  },
+  monitor: {
+    node_numbers: 1,
+    machine_type: f1-micro,
+    provisioning_model: SPOT,
+    tags: ["ssh", monitor]
+  },
+  manager: {
+    node_numbers: 1,
+    machine_type: f1-micro,
+    provisioning_model: SPOT,
+    tags: ["ssh", monager]
+  },
+  bastion: {
+    machine_type: f1-micro,
+    provisioning_model: SPOT,
+    tags: ["ssh", bastion]
+  }
+}

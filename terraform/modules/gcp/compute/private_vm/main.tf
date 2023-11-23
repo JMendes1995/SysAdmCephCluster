@@ -1,8 +1,8 @@
 resource "google_compute_instance" "vm" {
     count = var.num_instances
-    name         = "${var.vm_name}-${count.index}"
+    name         = "${var.vm_name}${count.index+1}"
     machine_type = var.machine_type
-    zone = var.available_zones[count.index]
+    zone = element(var.available_zones, count.index)
     boot_disk {
       initialize_params {
         image = var.image
@@ -26,12 +26,4 @@ resource "google_compute_instance" "vm" {
       email  = var.defaul_sa_name
       scopes = var.scopes
     }
-}
-
-
-resource "google_compute_attached_disk" "attached_storage" {
-  count = length(var.storage_devices)
-  disk = var.storage_devices[0]
-  instance = google_compute_instance.vm.0.id
-  zone = var.available_zones[count.index]
 }

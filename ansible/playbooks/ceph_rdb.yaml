@@ -5,7 +5,7 @@
     ceph osd pool set rbd pg_autoscale_mode on
     rbd pool init rbd
     ceph osd pool autoscale-status
-    rbd create --size 5G --pool rbd rbd01
+    rbd create --size {{ (hosts.osd.volumes_per_instance * hosts.osd.node_numbers) * hosts.osd.volume_sizes_gb |int }} --pool rbd rbd01
     rbd ls -l
   tags: ceph_client
 

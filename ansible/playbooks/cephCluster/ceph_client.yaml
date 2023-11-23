@@ -1,4 +1,4 @@
-- hosts: bastion
+- hosts: manager
   remote_user: bastion
   become: true
   vars_files:
