@@ -1,5 +1,7 @@
 project_name: SysAdmCephCluster
 region: europe-west4
+private_cidr: 10.10.0.0/24
+public_cidr: 192.168.0.0/24
 zones: 
   - europe-west4-a
   - europe-west4-b
@@ -18,33 +20,33 @@ hosts: {
     node_numbers: 3,
     machine_type: f1-micro,
     provisioning_model: SPOT,
-    tags: ["ssh", osd],
-    volumes: 1,
+    tags: ["ssh", "osd"],
     volumes_per_instance: 1,
     volume_sizes_gb: 5,
-    volume_type: pd-standard
+    volume_type: pd-standard,
+    volume_location: ["/dev/sdb"]
   },
-  rdb: {
+  rbd: {
     node_numbers: 1,
     machine_type: f1-micro,
     provisioning_model: SPOT,
-    tags: ["ssh", rdb]
+    tags: ["ssh", rbd]
   },
   monitor: {
-    node_numbers: 1,
+    node_numbers: 2,
     machine_type: f1-micro,
     provisioning_model: SPOT,
-    tags: ["ssh", monitor]
+    tags: ["ssh", "monitor"]
   },
   manager: {
-    node_numbers: 1,
+    node_numbers: 2,
     machine_type: f1-micro,
     provisioning_model: SPOT,
-    tags: ["ssh", monager]
+    tags: ["ssh", "manager"]
   },
   bastion: {
     machine_type: f1-micro,
     provisioning_model: SPOT,
-    tags: ["ssh", bastion]
+    tags: ["ssh","bastion"]
   }
 }

@@ -9,6 +9,7 @@ terraform {
 
 
 provider "google" {
-  project = "sysadmcephcluster"
-  region = "europe-west4"
+  credentials = file(var.service_account_file)
+  project = var.project_id
+  region = var.region
 }

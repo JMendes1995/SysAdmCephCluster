@@ -4,6 +4,84 @@
   vars_files:
     - ../ceph_cluster_configuration.yml
   tasks:
-    - include_tasks: ../playbooks/init/build_inventory.yaml
-    - include_tasks: ../playbooks/init/build_tfvars.yaml
-    - include_tasks: ../playbooks/init/tf_state.yaml
+    - name: create inventory file
+      shell: |
+        echo "" > ../inventory/inventory.gcp.yml
+        tee -a ../inventory/inventory.gcp.yml << EOF
+        plugin: gcp_compute
+        projects:
+          - {{project_id}}
+        region: {{region}}
+        hostnames:
+          - public_ip
+          - private_ip
+        groups:
+          bastion: "'bastion' in name"
+          osd: "'osd' in name"
+          manager: "'manager' in name"
+          monitor: "'monitor' in name"
+          rbd: "'rbd' in name"
+        auth_kind: serviceaccount
+        service_account_file: {{ service_account_file }}
+        EOF
+
+
+    - name: check if local pub ip is inside of ip's list
+      register: pub_ip
+      command: curl ifconfig.me
+
+    - name: append local pub ip into allow list 
+      when:  item not in allow_ip_list
+      set_fact:
+        allow_ip_list: "{{ allow_ip_list + [ item ] }}"
+      with_items: "{{ pub_ip.stdout }}/32"
+
+    - name: write vars into tfvars file
+      shell: |
+        echo "" > ../../terraform/env.tfvars
+        tee -a ../../terraform/env.tfvars << EOF
+        tfstate_bucket_name="{{ bucket_name }}"
+        service_account_file="{{service_account_file}}"
+        project_name="{{ project_name }}"
+        project_id="{{ project_id }}"
+        region="{{ region }}"
+        ip_isp_pub={{ allow_ip_list | replace("'",'"') }}
+        path_local_public_key="{{ path_local_public_key }}"
+        username="{{username}}"
+        image="{{image}}"
+        scopes={{scopes | replace("'",'"') }}
+
+        osd_nodes_number={{hosts.osd.node_numbers}}
+        osd_volumes={{ hosts.osd.volumes_per_instance * hosts.osd.node_numbers |int }}
+        osd_volumes_per_instance={{hosts.osd.volumes_per_instance}}
+        osd_volume_sizes_gb={{hosts.osd.volume_sizes_gb}}
+        osd_volume_type="{{hosts.osd.volume_type}}"
+        osd_machine_type="{{hosts.osd.machine_type}}"
+        osd_provisioning_model="{{hosts.osd.provisioning_model}}"
+        osd_tags={{hosts.osd.tags| replace("'",'"') }}
+
+        rbd_nodes_number={{hosts.rbd.node_numbers}}
+        rbd_machine_type="{{hosts.rbd.machine_type}}"
+        rbd_provisioning_model="{{hosts.rbd.provisioning_model}}"
+        rbd_tags={{hosts.rbd.tags| replace("'",'"') }}
+
+        monitor_nodes_number={{hosts.monitor.node_numbers}}
+        monitor_machine_type="{{hosts.monitor.machine_type}}"
+        monitor_provisioning_model="{{hosts.monitor.provisioning_model}}"
+        monitor_tags={{hosts.monitor.tags| replace("'",'"') }}
+
+        manager_nodes_number={{hosts.manager.node_numbers}}
+        manager_machine_type="{{hosts.manager.machine_type}}"
+        manager_provisioning_model="{{hosts.manager.provisioning_model}}"
+        manager_tags={{hosts.manager.tags| replace("'",'"') }}
+
+        bastion_machine_type="{{hosts.bastion.machine_type}}"
+        bastion_provisioning_model="{{hosts.bastion.provisioning_model}}"
+        bastion_tags={{hosts.bastion.tags| replace("'",'"') }}
+        EOF
+
+    - name:  tf_state_bucket
+      shell: | 
+        cd ../../terraform/tf_state_bucket/ 
+        terraform init
+        terraform {{command}} -var="region={{region}}" -var="project_id={{project_id}}" -var="service_account_file={{service_account_file}}" -var="tfstate_bucket_name={{bucket_name}}" -auto-approve

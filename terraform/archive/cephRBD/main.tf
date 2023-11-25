@@ -1,15 +1,15 @@
-module "CephRDB" {
+module "CephRBD" {
     source = "../modules/gcp/compute/private_vm"
 
-    num_instances       = var.
+    num_instances       = var.rbd_nodes_number
     vm_name             = "rbd"
-    machine_type        = var.rdb_manager_machine_type
+    machine_type        = var.rbd_machine_type
     vpc_id              = data.terraform_remote_state.base_tfstate.outputs.vpc_id
     subnet              = data.terraform_remote_state.base_tfstate.outputs.private_subnet_name
     public_instance     = false
     image               = var.image
-    provisioning_model  = var.rdb_provisioning_model
-    tags                = var.rdb_tags
+    provisioning_model  = var.rbd_provisioning_model
+    tags                = var.rbd_tags
     scopes              = var.scopes
     ssh_pub             = file(var.path_local_public_key)
     username            = var.username

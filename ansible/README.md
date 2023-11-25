@@ -92,7 +92,7 @@ ansible-playbook -i inventory common/init.yaml -l bastion --tags ceph_init --key
 
 ---------> initial setup all nodes 
 ./executor.sh cephManager apply
-./executor.sh cephRDB apply
+./executor.sh cephrbd apply
 ./executor.sh cephObjectStorageDevice apply
 
 ansible-playbook -i inventory common/init.yaml -l all --tags ceph_init,ceph_node,ceph_client --key-file "../ssh_keys/idrsa"  -vv
@@ -103,8 +103,8 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
 setup ceph osd
 ansible-playbook -i inventory cephCluster/cephOSD.yaml -l osd --tags ceph_osd --key-file "../ssh_keys/idrsa"  -vv
 
-setup ceph rdb
-ansible-playbook -i inventory cephCluster/cephRDB.yaml -l rdb --tags ceph_rdb --key-file "../ssh_keys/idrsa"  -vv
+setup ceph rbd
+ansible-playbook -i inventory cephCluster/cephrbd.yaml -l rbd --tags ceph_rbd --key-file "../ssh_keys/idrsa"  -vv
 ###########################################
 
 

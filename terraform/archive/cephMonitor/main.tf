@@ -3,7 +3,7 @@ module "CephMonitor" {
 
     num_instances       = var.monitor_nodes_number
     vm_name             = "monitor"
-    machine_type        = var.monitor_manager_machine_type
+    machine_type        = var.monitor_machine_type
     vpc_id              = data.terraform_remote_state.base_tfstate.outputs.vpc_id
     subnet              = data.terraform_remote_state.base_tfstate.outputs.private_subnet_name
     public_instance     = false

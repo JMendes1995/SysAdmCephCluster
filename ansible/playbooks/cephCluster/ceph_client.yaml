@@ -1,8 +1,0 @@
-- hosts: manager
-  remote_user: bastion
-  become: true
-  vars_files:
-    - ../../variables/var.yml
-  tasks:
-    - include: setup_node.yaml
-    - include: client.yaml

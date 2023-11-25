@@ -1,6 +1,28 @@
-- hosts: 127.0.0.1
+- hosts: all
   connection: local
   become: true
-  tags: proxy_jump
+  vars_files:
+      - ../ceph_cluster_configuration.yml
   tasks:
-    - include_tasks: ../playbooks/proxy_jump.yaml
+      - name: update ssh_conf for network 10.10.*
+        tags: proxy_jump
+        become: true
+        shell: |
+          tee -a /etc/ssh/ssh_config << END
+          Host {{ item }}
+            Port 22
+            User {{username}}
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            KexAlgorithms curve25519-sha256,ecdh-sha2-nistp521
+          Host 10.10.*
+            Port 22
+            User {{username}}
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            KexAlgorithms curve25519-sha256,ecdh-sha2-nistp521
+            IdentityFile ../ssh_keys/idrsa
+            ProxyCommand ssh -o StrictHostKeychecking=no -i ../ssh_keys/idrsa  {{username}}@{{ item }} -W %h:%p
+          END
+        with_items: "{{hostvars[inventory_hostname].groups.bastion[0]}}"
+      

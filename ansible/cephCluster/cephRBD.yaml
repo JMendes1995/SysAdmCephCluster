@@ -1,0 +1,47 @@
+- hosts: rbd
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../ceph_cluster_configuration.yml
+  tasks:
+    - name: move files to ceph folder
+      tags: ceph_rbd
+      shell: |
+        mv /home/bastion/ceph.conf /etc/ceph/ceph.conf
+        mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+        mv /home/bastion/ceph.keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+        chown ceph. /etc/ceph/ceph.* /var/lib/ceph/bootstrap-osd/*
+
+    - name: create RBD pool
+      tags: ceph_rbd
+      shell: |
+        ceph osd pool create rbd 64
+        ceph mgr module enable pg_autoscaler
+        ceph osd pool set rbd pg_autoscale_mode on
+        rbd pool init rbd
+        ceph osd pool autoscale-status
+        rbd create --size {{ (hosts.osd.volumes_per_instance * (hosts.osd.node_numbers-1)) * hosts.osd.volume_sizes_gb |int }}G --pool rbd rbd01
+        rbd ls -l
+
+    - name: map block device
+      shell: |
+        rbd map rbd01
+        rbd showmapped
+      tags: ceph_rbd
+
+    - name: list volumes
+      shell: rbd ls -l
+      tags: ceph_rbd
+
+    - name: format with XFS
+      shell: mkfs.xfs /dev/rbd0
+      tags: ceph_rbd
+
+    - name: mount volume
+      shell: mount /dev/rbd0 /mnt
+      tags: ceph_rbd
+
+    - name: check volumes
+      shell: df -hT
+      tags: ceph_rbd
+

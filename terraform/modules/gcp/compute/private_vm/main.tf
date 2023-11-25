@@ -8,10 +8,13 @@ resource "google_compute_instance" "vm" {
         image = var.image
       }
     }
+    metadata_startup_script = "apt update -y && apt-get install ${var.packages} -y"
+
     scheduling {
         provisioning_model = var.provisioning_model
         preemptible = true
         automatic_restart = false
+        instance_termination_action = "STOP"
     }
     network_interface {
       network = var.vpc_id
@@ -25,5 +28,8 @@ resource "google_compute_instance" "vm" {
       # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
       email  = var.defaul_sa_name
       scopes = var.scopes
+    }
+    lifecycle {
+      ignore_changes = [attached_disk]
     }
 }

@@ -4,5 +4,51 @@
   vars_files:
     - ../ceph_cluster_configuration.yml
   tasks:
-    - include_tasks: ../playbooks/ceph_monitor.yaml
-    - include_tasks: ../playbooks/ceph_manager.yaml
+    - name: move files to ceph folder
+      tags: ceph_manager
+      shell: |
+        mv /home/bastion/ceph.conf /etc/ceph/ceph.conf
+        mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+        chown ceph. /etc/ceph/ceph.* 
+    
+    - name: setup ceph manager
+      tags: ceph_manager
+      shell: |
+        mkdir /var/lib/ceph/mgr/ceph-{{ item }}
+        ceph auth get-or-create mgr.{{ item }} mon 'allow profile mgr' osd 'allow *' mds 'allow *'
+        ceph auth get-or-create mgr.{{ item }}| tee /etc/ceph/ceph.mgr.admin.keyring
+        cp /etc/ceph/ceph.mgr.admin.keyring /var/lib/ceph/mgr/ceph-{{ item }}/keyring
+        chown ceph. /etc/ceph/ceph.mgr.admin.keyring
+        chown -R ceph. /var/lib/ceph/mgr/ceph-{{ item }}
+      with_items: "{{ hostvars[inventory_hostname].name }}"
+    
+    - name: enable and start manager service
+      tags: ceph_manager
+      shell: |
+        systemctl enable --now ceph-mgr@{{ item }}
+        systemctl start ceph-mgr@{{ item }}
+      with_items:  "{{ hostvars[inventory_hostname].name }}"
+    
+    - name: test cluster
+      tags: ceph_manager
+      shell: ceph -s
+    
+    - name: enable dashboard
+      tags: ceph_manager_dashboard
+      shell: |
+        ceph mgr module enable dashboard 
+
+    - name: create certificate self sign
+      tags: ceph_manager_dashboard
+      shell: |
+        ceph dashboard create-self-signed-cert
+        
+    - name: create user for dashboard
+      tags: ceph_manager_dashboard
+      shell: |
+        echo "password" > /home/bastion/pass.txt
+        ceph dashboard ac-user-create serverworld -i /home/bastion/pass.txt administrator
+        ceph dashboard ac-user-create serverworld -i pass.txt administrator
+        ceph mgr services
+    
+    

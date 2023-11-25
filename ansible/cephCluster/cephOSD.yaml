@@ -1,7 +1,23 @@
 - hosts: osd
   remote_user: bastion
   become: true
+  tags: ceph_osd
   vars_files:
-    - ../ceph_cluster_configuration.yml
+   - ../ceph_cluster_configuration.yml
   tasks:
-    - include_tasks: ../playbooks/ceph_osd.yaml
+
+    - name: move files to ceph folder
+      tags: ceph_osd
+      shell: |
+        mv /home/bastion/ceph.conf /etc/ceph/ceph.conf
+        mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+        mv /home/bastion/ceph.keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+        chown ceph. /etc/ceph/ceph.* /var/lib/ceph/bootstrap-osd/*
+
+    - name: partition volume to 100%
+      tags: ceph_osd
+      shell: |
+        parted --script {{item}} 'mklabel gpt'
+        parted --script {{item}} "mkpart primary 0% 100%"
+        ceph-volume lvm create --data {{item}}1
+      with_items: "{{hosts.osd.volume_location}}"

@@ -6,4 +6,3 @@ module "tfstateBucket" {
   storage_class = "STANDARD"
   versioning    = true
 }
-variable "tfstate_bucket_name" {}

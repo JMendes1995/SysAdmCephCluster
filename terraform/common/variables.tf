@@ -17,10 +17,10 @@ variable "osd_volume_type"{}
 variable "osd_machine_type"{}
 variable "osd_provisioning_model"{}
 variable "osd_tags"{}
-variable "rdb_nodes_number" {}
-variable "rdb_machine_type"{}
-variable "rdb_provisioning_model"{}
-variable "rdb_tags"{}
+variable "rbd_nodes_number" {}
+variable "rbd_machine_type"{}
+variable "rbd_provisioning_model"{}
+variable "rbd_tags"{}
 variable "monitor_nodes_number" {}
 variable "monitor_machine_type"{}
 variable "monitor_provisioning_model"{}
@@ -32,3 +32,4 @@ variable "manager_tags"{}
 variable "bastion_machine_type"{}
 variable "bastion_provisioning_model"{}
 variable "bastion_tags"{}
+variable "service_account_file"{}

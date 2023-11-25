@@ -1,4 +1,0 @@
-- name:  tf_state_bucket
-  shell: | 
-    cd ../../terraform/tf_state_bucket/ 
-    terraform {{command}} -var-file=../env.tfvars -auto-approve

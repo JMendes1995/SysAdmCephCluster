@@ -8,34 +8,6 @@ module "Volumes"{
     available_zones         = data.google_compute_zones.available_zones.names.*
 }
 
-# module "VolumesZoneA"{
-#     source = "../modules/gcp/compute/storage"
-
-#     storage_device_number   = var.osd_volumes
-#     storage_device_name     = "ceph-storage"
-#     storage_device_type     = var.osd_volume_type
-#     storage_device_size     = var.osd_volume_sizes_gb
-#     available_zones         = "${var.region}-a"
-# }
-
-# module "VolumesZoneB"{
-#     source = "../modules/gcp/compute/storage"
-
-#     storage_device_number   = var.osd_volumes
-#     storage_device_name     = "ceph-storage"
-#     storage_device_type     = var.osd_volume_type
-#     storage_device_size     = var.osd_volume_sizes_gb
-#     available_zones         = "${var.region}-b"
-# }
-# module "VolumesZoneC"{
-#     source = "../modules/gcp/compute/storage"
-
-#     storage_device_number   = var.osd_volumes
-#     storage_device_name     = "ceph-storage"
-#     storage_device_type     = var.osd_volume_type
-#     storage_device_size     = var.osd_volume_sizes_gb
-#     available_zones         = "${var.region}-c"
-# }
 module "CephObjectStorageDevice" {
     source = "../modules/gcp/compute/private_vm"
 

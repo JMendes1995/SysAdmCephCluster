@@ -44,3 +44,7 @@ variable "defaul_sa_name"{
 variable "available_zones"{
   type = list
 }
+
+variable "packages"{
+  type = string
+}

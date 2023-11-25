@@ -1,4 +1,0 @@
-allow_ip_list:
-  - "149.90.112.98/32"
-bastion_network_cidr: "192.168.0.0/24"
-ceph_cluster_network_cidr: "10.10.0.0/24"

@@ -49,7 +49,7 @@ module "FirewallRulePrivate" {
     rule_name           = "private-network-rules"
     vpc_id              = module.Network.vpc_id
     protocol            = "tcp"
-    ports               = ["22","443", "80", "3300", "6789","6800-7100" ]
+    ports               = ["22","443", "80", "8443", "3300", "6789","6800-7100" ]
     source_ranges       = ["192.168.0.0/24", "10.10.0.0/24"]
     desitnation_ranges  = ["0.0.0.0/0"]
     project_id          = var.project_id
@@ -75,7 +75,7 @@ module "FirewallRulePublic" {
     rule_name           = "public-network-rules"
     vpc_id              = module.Network.vpc_id
     protocol            = "tcp"
-    ports               = ["22", "443"]
+    ports               = ["22"]
     source_ranges       = concat(var.ip_isp_pub, ["10.10.0.0/24"])
     desitnation_ranges  = ["0.0.0.0/0"]
     project_id          = var.project_id
