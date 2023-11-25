@@ -2,7 +2,7 @@
   connection: local
   become: true
   vars_files:
-      - ../ceph_cluster_configuration.yml
+      - ../../ceph_cluster_configuration.yml
   tasks:
       - name: update ssh_conf for network 10.10.*
         tags: proxy_jump

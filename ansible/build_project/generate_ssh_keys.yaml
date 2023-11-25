@@ -3,7 +3,7 @@
   connection: local
   tags: ssh_keys
   vars_files:
-    - ../ceph_cluster_configuration.yml
+    - ../../ceph_cluster_configuration.yml
   tasks:
     - name: create bastion ssh-keys 
       shell: |

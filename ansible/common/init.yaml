@@ -3,7 +3,7 @@
   remote_user: bastion
   become: true
   vars_files:
-    - ../ceph_cluster_configuration.yml
+    - ../../ceph_cluster_configuration.yml
   tasks:
       - name: ensure private key and public are present
         tags: ceph_init

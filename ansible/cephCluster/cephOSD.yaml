@@ -3,7 +3,7 @@
   become: true
   tags: ceph_osd
   vars_files:
-   - ../ceph_cluster_configuration.yml
+   - ../../ceph_cluster_configuration.yml
   tasks:
 
     - name: move files to ceph folder
