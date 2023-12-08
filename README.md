@@ -14,13 +14,119 @@
 ### Architecture diagram <a name="diagram"></a>
 ![image info](./resources/ceph_cluster_diagram.png)
 #### Architecture decisions <a name="arch_decesions"></a>
+In this project, our team established various guidelines that have culminated in the present architecture. One of the essential principles we incorporated is the need for a secure architecture. In a real-life scenario, every cluster must have private access. According to cloud provider’s best practices, the default Virtual Private Cloud (VPC) should only be utilized for testing purposes as it lacks constraints and security measures, posing a severe security risk. Consequently, for this project was created a  **Virtual Private Cloud** with 2 separated private subnets 192.168.0.0/24 and 10.10.0.0/24. The subnet 192.168.0.0/24, is publically accessible as bastion host serves as a proxy jump from the Administrator to the Ceph cluster, while a firewall rule allows inbound public traffic from the Administration public IP address on port 22. Additionally, this subnet was created with the necessary security measures to ensure that the public access does not compromise the overall security of the architecture.
 
+Additionaly, the subnet 10.10.0.0/24 is a private subnet that will host the entire ceph architecture. Therefore, having these resources exposed publicly would pose a significant risk. we defined this subnet as private by implying firewall rules that only allow inbound requests from 192.168.0.0/24 network. However the ceph nodes require access to internet to pull software. Therefore was additionaly createa a NAT router that grants outbound connectivity for ceph instances.
 
-#### Project Components <a name="p_components"></a>
+To deploy the architecture into Google Cloud it has decided to divide the deployment into tow separate phases: infrastructure provisioning and configuration management. Terraform was used as an infrastructure as code tool for infrastructure provisioning. While ansible was used for, for configuration management. The purpose of this segmentation is to enhance the agility towards the architecture configuration. In case a node faces issues, with Ansible,  it is possible to operate isolated or multiple commands based on defined workflows, tags, and playbook. If the configuration was implied using cloud-init on Terraform, it would be impossible to modify the instance without destroying it and causing downtime.
+
 #### Terraform structure <a name="tf"></a>
+The current project utilizes a terraform structure based on modules, with the `executer.sh` script serving as the primary interface in place of direct terraform commands. This script executes terraform actions based on an input module and operation type (apply or destroy) and thereby reduces the number of required input parameters. Furthermore, the script automatically initializes Terraform and includes Terraform parameters that facilitate the use of a custom tf state backend, which points to a bucket housing tf states. This approach supports concurrent work by two team members on the project without the risk of interfering with each other's resources. 
+The terraform actions performed within the `executer.sh` script occur within an ephemeral target folder with a single execution timespan, during which files from the targeted module and the common folder are copied. The common folder contains terraform variables, backend configuration, and terraform providers. It is worth noting that prior to initiating the project's module provisioning, is required a preemptive provisioning of a bucket that will function as the terraform state backend.
+
+Managing and maintaining infrastructure that involves multiple cloud resources can be overwhelming. To make it easier, cloud architect's commonly use modular approaches reduce the number of duplicated resources, generate fewer dependencies and simplify the creation of resources from the same type. In the presented architecture the resources are located in the “modules” folder and are segregated based on whether they are networking, computing, security or storage resources.
+
+Additionally, the modules available to be provisioned are the “base” module which provisions the VPC, the subnets the nat resources and the firewall rules. The second module is the cephCluster which is responsible for provisioning virtual machine instances and HDD storage intrinsically correlated with the Ceph cluster.
+
+
+<details>
+  <summary>terraform directory structure</summary>
+  
+  ```bash
+    terraform
+    ├── base
+    │   ├── locals.tf
+    │   ├── main.tf
+    │   └── outputs.tf
+    ├── cephCluster
+    │   ├── main.tf
+    │   └── remote_state.tf
+    ├── common
+    │   ├── data.tf
+    │   ├── providers.tf
+    │   ├── tfstate_backend.tf
+    │   └── variables.tf
+    ├── env.tfvars
+    ├── executor.sh
+    ├── modules
+    │   └── gcp
+    │       ├── compute
+    │       │   ├── private_vm
+    │       │   │   ├── main.tf
+    │       │   │   ├── outputs.tf
+    │       │   │   └── variables.tf
+    │       │   ├── public_vm
+    │       │   │   ├── main.tf
+    │       │   │   └── variables.tf
+    │       │   └── storage
+    │       │       ├── main.tf
+    │       │       ├── outputs.tf
+    │       │       └── variables.tf
+    │       ├── firewall_rules
+    │       │   ├── main.tf
+    │       │   └── variables.tf
+    │       ├── network
+    │       │   ├── nat
+    │       │   │   ├── main.tf
+    │       │   │   └── variables.tf
+    │       │   ├── subnet
+    │       │   │   ├── main.tf
+    │       │   │   └── variables.tf
+    │       │   └── vpc
+    │       │       ├── main.tf
+    │       │       ├── outputs.tf
+    │       │       └── variables.tf
+    │       └── storage_bucket
+    │           ├── main.tf
+    │           └── variables.tf
+    └── tf_state_bucket
+        ├── main.tf
+        ├── providers.tf
+        ├── terraform.tfstate
+        ├── terraform.tfstate.backup
+        └── variables.tf
+18 directories, 43 files
+  ```
+</details>
+
 #### Ansible structure <a name="ansible"></a>
+As previously indicated, using Ansible allows the creation of configuration workflows based on playbooks and tags. Ansible effectively  communicates with the google cloud API obtaining the instances metadata which contains the private and public IP address of every node and groups them according to their names.
+
+The “generate_ssh_keys” playbook contained in the “build_projcet” folder generates a bastion SSH key pair used for authenticating instance.  the “main.yaml” playbook generates the “env.tfvars” file with project configurations based on “ceph_cluster_configuration.yaml” located in the project root folder. It also executes the terraform commands to create the tf state bucket.
+
+Additionally, the “build_local_proxy.yaml” playbook, modifies locally the /etc/ssh/ssh_config file to allow jumping to 10.10.0.0/24 private subnet using the bastion host.
+
+Lastly, within the cephCluster folder are present the playbooks responsible for configuring the Ceph cluster separated depending of his role.
+
+<details>
+  <summary>ansible directory structure</summary>
+
+  ```bash
+ansible
+├── ansible.cfg
+├── bastion
+│   └── build_local_proxy.yaml
+├── build_project
+│   ├── generate_ssh_keys.yaml
+│   └── main.yaml
+├── cephCluster
+│   ├── cephManager.yaml
+│   ├── cephMonitor.yaml
+│   ├── cephOSD.yaml
+│   └── cephRBD.yaml
+├── common
+│   └── init.yaml
+└── inventory
+    └── inventory.gcp.yml
+
+6 directories, 10 files
+  ```
+</details>
+
 ### Configurations <a name="configs"></a>
 ### Backup strategies <a name="bk"></a>
+For scope was tasked to crate 2 backup mechanisms
+
 ### Troubleshooting steps <a name="trbl"></a>
 ### System Recovery <a name="recovery"></a>
 
@@ -202,7 +308,9 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
 <details open>
   <summary>fist 50 results from dummy database</summary>
     
-  ```bash root@rbd1:~# sudo -u postgres psql -c "select * from randomtable      limit  50;"
+  ```bash 
+
+  root@rbd1:~# sudo -u postgres psql -c "select * from randomtable limit 50;"
    id |           random_text            |   random_number    | random_integer | random_date
   ----+----------------------------------+--------------------+----------------+-------------
     1 | b06af2d3106b653d77a0625eb1cafb2a |  196.1698110577663 |             88 | 2567-10-01
@@ -254,90 +362,5 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
   postgresql service is =>inactive
   number of backups =>5
   postgresql service is =>inactive
-  ```
-</details>
-
-<details>
-  <summary>terraform directory structure</summary>
-  
-  ```bash
-    terraform
-    ├── base
-    │   ├── locals.tf
-    │   ├── main.tf
-    │   └── outputs.tf
-    ├── cephCluster
-    │   ├── main.tf
-    │   └── remote_state.tf
-    ├── common
-    │   ├── data.tf
-    │   ├── providers.tf
-    │   ├── tfstate_backend.tf
-    │   └── variables.tf
-    ├── env.tfvars
-    ├── executor.sh
-    ├── modules
-    │   └── gcp
-    │       ├── compute
-    │       │   ├── private_vm
-    │       │   │   ├── main.tf
-    │       │   │   ├── outputs.tf
-    │       │   │   └── variables.tf
-    │       │   ├── public_vm
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   └── storage
-    │       │       ├── main.tf
-    │       │       ├── outputs.tf
-    │       │       └── variables.tf
-    │       ├── firewall_rules
-    │       │   ├── main.tf
-    │       │   └── variables.tf
-    │       ├── network
-    │       │   ├── nat
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   ├── subnet
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   └── vpc
-    │       │       ├── main.tf
-    │       │       ├── outputs.tf
-    │       │       └── variables.tf
-    │       └── storage_bucket
-    │           ├── main.tf
-    │           └── variables.tf
-    └── tf_state_bucket
-        ├── main.tf
-        ├── providers.tf
-        ├── terraform.tfstate
-        ├── terraform.tfstate.backup
-        └── variables.tf
-18 directories, 43 files
-  ```
-</details>
-
-<details>
-  <summary>ansible directory structure</summary>
-
-  ```bash
-  ansible
-  ├── ansible.cfg
-  ├── bastion
-  │   └── build_local_proxy.yaml
-  ├── build_project
-  │   ├── generate_ssh_keys.yaml
-  │   └── main.yaml
-  ├── cephCluster
-  │   ├── cephManager.yaml
-  │   ├── cephMonitor.yaml
-  │   ├── cephOSD.yaml
-  │   └── cephRBD.yaml
-  ├── common
-  │   └── init.yaml
-  ├── database
-  └── inventory
-      └── inventory.gcp.yml
-  7 directories, 10 files
   ```
 </details>
