@@ -45,3 +45,109 @@
       shell: df -hT
       tags: ceph_rbd
 
+######################## database ########################
+    - name: install postgres
+      tags: database
+      shell: |
+        sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        apt-get update
+        apt-get -y install postgresql rsync
+
+    - name: create directory for pg database
+      tags: database,restore
+      shell: mkdir -p /mnt/database/lib/postgresql/16/main/
+
+    - name: sync data from old directory to the new database directory
+      tags: database
+      shell: rsync -r /var/lib/postgresql/16/main/ /mnt/database/lib/postgresql/16/main/
+
+    - name: change ownership of postgres directory
+      tags: database,restore
+      shell: |
+        chown -R postgres. /mnt/database/lib/postgresql/16/main/
+        chmod -R 0700 /mnt/database/lib/postgresql/16/main/
+
+    - name: add new directory to pg configuration file
+      tags: database
+      shell: echo "data_directory = '/mnt/database/lib/postgresql/16/main/'" >> /etc/postgresql/16/main/postgresql.conf
+
+    - name: restart pg service
+      tags: database
+      shell: systemctl restart postgresql
+
+    - name: check new directory
+      tags: database
+      shell: |
+        sudo -u postgres psql -c "select setting from pg_settings where name = 'data_directory';"
+        
+    - name: create database user and a table
+      tags: database
+      shell: | 
+        sudo su - postgres -c \
+        " psql <<__END__
+        CREATE TABLE randomtable AS
+        SELECT 
+        	generate_series(1,1000) AS id, 
+        	md5(random()::text) AS random_text, 
+        	random() * 1000 AS random_number,
+        	floor(random() * 1000) AS random_integer,
+        	'2000-01-01'::date + trunc(random() * 366 * 1000)::int random_date;
+        __END__
+        "
+
+    ########## database backup process 
+    - name: backup
+      tags: backup 
+      shell: | 
+        mkdir -p /home/bastion/postgres/backup
+        touch /home/bastion/cronjob.sh
+        chmod u+x /home/bastion/cronjob.sh
+
+    
+    - name: write_file
+      tags: backup 
+      ansible.builtin.blockinfile:
+        path: /home/bastion/cronjob.sh
+        insertbefore: "someline:"
+        block: |
+          #!/bin/bash
+          t=`date +%s`
+          cd /mnt
+
+          nb_backups=`ls -la /home/bastion/postgres/backup/  | tail -n +4 | wc -l`
+          echo "number of backups =>"$nb_backups
+          postgres_service_status=`systemctl is-active postgresql`
+          echo "postgresql service is =>"$postgres_service_status
+          if [ "$postgres_service_status" != "active" ]; then
+              exit 1
+          fi
+          if (( "$nb_backups" >= 5 )); then
+            first_backup=`ls -la  /home/bastion/postgres/backup/ | tail -n +4 | head -1 | awk '{print $9}'`
+            rm -rf /home/bastion/postgres/backup/$first_backup
+            tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+          else
+            tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+          fi
+    - name: create cronjob
+      tags: backup 
+      ansible.builtin.blockinfile:
+        path: /etc/crontab
+        insertbefore: "someline:"
+        block: |
+          SHELL=/bin/bash
+          */1 * * * * root /home/bastion/cronjob.sh -delete >> /home/bastion/crontab.log 2>&1
+
+
+    - name: restore database
+      tags: restore
+      shell: | 
+        last_bk=`ls -la  /home/bastion/postgres/backup/ | tail -n +4 | tail -1 | awk '{print $9}'`
+        tar -xvf /home/bastion/postgres/backup/$last_bk -C /mnt >/dev/null 2>&1
+        chown -R postgres /mnt/database/lib/postgresql/16/main/
+        chmod -R 0700 /mnt/database/lib/postgresql/16/main/
+    
+    - name: restart psql service 
+      tags: restore
+      shell: | 
+        systemctl restart postgresql

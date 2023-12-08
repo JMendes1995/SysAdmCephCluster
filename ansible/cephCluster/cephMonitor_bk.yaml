@@ -10,27 +10,33 @@
     shell: uuidgen
     register: uuid
 
-  - name: create ceph file
-    tags: ceph_monitor
-    shell: touch /etc/ceph/ceph.conf
-
   - name: generate monitor network and admin configuration
     tags: ceph_monitor
-    ansible.builtin.blockinfile:
-      path: /etc/ceph/ceph.conf
-      insertafter: BOF
-      block: |
-        [global]
-        # specify cluster network for monitoring
-        cluster network = {{ private_cidr }}
-        # specify public network
-        public network = {{ private_cidr }}
-        # specify UUID genarated above
-        fsid = {{ item.uuid }}
-        # specify IP address of Monitor Daemon
-        mon host = {{ item.private_ip }}
-        # specify Hostname of Monitor Daemon
-        mon initial members = {{ item.instance_name }}
+    run_once: true
+    shell: |
+      echo "" > /etc/ceph/ceph.conf 
+      tee -a /etc/ceph/ceph.conf << EOF
+      [global]
+      # specify cluster network for monitoring
+      cluster network = {{ private_cidr }}
+      # specify public network
+      public network = {{ private_cidr }}
+      # specify UUID genarated above
+      fsid = {{ item.uuid }}
+      # specify IP address of Monitor Daemon
+      mon host = {{ item.private_ip }}
+      # specify Hostname of Monitor Daemon
+      mon initial members = {{ item.instance_name }}
+      osd pool default crush rule = -1
+      # mon.(Node name)
+      [mon.{{ item.instance_name }}]
+      # specify Hostname of Monitor Daemon
+      host = {{ item.instance_name }}
+      # specify IP address of Monitor Daemon
+      mon addr = {{ item.private_ip }}
+      # allow to delete pools
+      mon allow pool delete = true
+      EOF
     with_items: 
       - { uuid: "{{ uuid.stdout }}", 
           instance_name: "{{ hostvars[inventory_hostname].name }}", 
@@ -38,7 +44,7 @@
         }
 
   - name: genarate secret key for cluster moniotring and bootstrap
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: |
       ceph-authtool --create-keyring /etc/ceph/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
@@ -46,14 +52,14 @@
       ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
   
   - name: import keys
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: | 
       ceph-authtool /etc/ceph/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
       ceph-authtool /etc/ceph/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
   
   - name: generate monitor map
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: monmaptool --create --add {{ item.instance_name }} {{ item.private_ip }}:6789 --fsid {{ item.uuid }} /etc/ceph/monmap
     with_items: 
@@ -63,7 +69,7 @@
         }
   
   - name: setup monitor deamon
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: |
       mkdir /var/lib/ceph/mon/ceph-{{ item }}
@@ -73,7 +79,7 @@
     with_items: "{{ hostvars[inventory_hostname].name }}"
   
   - name: enable and start monitor service
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: |
       systemctl enable --now ceph-mon@{{ item }}
@@ -81,44 +87,43 @@
     with_items: "{{ hostvars[inventory_hostname].name }}"
   
   - name: enable monitor protocol
-    tags: ceph_monitor
+    tags: ceph_monitor_admin
     run_once: true
     shell: |
       ceph mon enable-msgr2
       ceph config set mon auth_allow_insecure_global_id_reclaim false
 
-  # - name: copy ceph monitor admin to other monitor  
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP == hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor_admin
-  #   shell: |
-  #     scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.client.admin.keyring bastion@{{item}}:/home/bastion/
-  #     scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.mon.keyring bastion@{{item}}:/home/bastion/
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
+  - name: copy ceph monitor admin to other monitor  
+    when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP == hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
+    tags: ceph_monitor_admin
+    shell: |
+      scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.client.admin.keyring bastion@{{item}}:/home/bastion/
+      scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.mon.keyring bastion@{{item}}:/home/bastion/
+    with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
 
-  # - name: copy ceph monitor admin to other monitor
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor
-  #   shell: |
-  #     mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
-  #     mv /home/bastion/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
-  #     chown -R ceph. /etc/ceph/
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
+  - name: copy ceph monitor admin to other monitor
+    when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
+    tags: ceph_monitor
+    shell: |
+      mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+      mv /home/bastion/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
+      chown -R ceph. /etc/ceph/
+    with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
   
-  # - name: add another monitor to ceph cluster
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor
-  #   shell: |
-  #     mkdir /var/lib/ceph/mon/ceph-{{hostvars[inventory_hostname].name}}
-  #     ceph auth get mon. -o /home/bastion/keyring
-  #     ceph mon getmap -o /home/bastion/keyring_map
-  #     ceph-mon -i {{hostvars[inventory_hostname].name}} --mkfs --monmap /home/bastion/keyring_map --keyring /home/bastion/keyring
-  #     ceph-mon -i {{hostvars[inventory_hostname].name}}
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
+  - name: add another monitor to ceph cluster
+    when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
+    tags: ceph_monitor
+    shell: |
+      mkdir /var/lib/ceph/mon/ceph-{{hostvars[inventory_hostname].name}}
+      ceph auth get mon. -o /home/bastion/keyring
+      ceph mon getmap -o /home/bastion/keyring_map
+      ceph-mon -i {{hostvars[inventory_hostname].name}} --mkfs --monmap /home/bastion/keyring_map --keyring /home/bastion/keyring
+      ceph-mon -i {{hostvars[inventory_hostname].name}}
+    with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
 
   - name: copy ceph conf files to manager node
     tags: ceph_manager
     shell: |
-      scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ bastion@{{item}}:/home/bastion/
       scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.conf bastion@{{item}}:/home/bastion/
       scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.client.admin.keyring bastion@{{item}}:/home/bastion/
     with_items: "{{hostvars[inventory_hostname].groups.manager}}"
@@ -142,30 +147,12 @@
     with_items: "{{hostvars[inventory_hostname].groups.rbd}}"
 
 
-  - name: backup file
-    tags: backup 
-    shell: | 
-      apt-get install -y rsync
-      touch /home/bastion/cronjob.sh
-      chmod u+x /home/bastion/cronjob.sh
 
-  - name: write backup file
-    tags: backup 
-    ansible.builtin.blockinfile:
-      path: /home/bastion/cronjob.sh
-      insertbefore: "someline:"
-      block: |
-        rsync  -e "ssh -o StrictHostKeyChecking=no" -arv /var/lib/ceph/mon/ceph-{{item.instance_name}}/* bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/
-        rsync  -e "ssh -o StrictHostKeyChecking=no" -arv /etc/ceph/ceph.mon.keyring bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/
-    with_items:
-        - { instance_name: "{{ hostvars[inventory_hostname].name }}", 
-          manager_ip: "{{hostvars[inventory_hostname].groups.manager[0]}}"
-        }
 
-  - name: create cronjob
-    tags: backup 
-    ansible.builtin.blockinfile:
-      path: /etc/crontab
-      insertbefore: "someline:"
-      block: |
-       */1 * * * * root /home/bastion/cronjob.sh
+
+
+- name: build hosts_name
+  when: hostvars[inventory_hostname].groups.monitor|length > 1
+  set_fact:
+    ceph_conf: {{ (var1 + var2 + var3) }}
+  with_items: "{{ hostvars[inventory_hostname] }}"

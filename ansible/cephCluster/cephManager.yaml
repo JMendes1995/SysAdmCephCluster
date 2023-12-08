@@ -9,6 +9,7 @@
       shell: |
         mv /home/bastion/ceph.conf /etc/ceph/ceph.conf
         mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+        mv /home/bastion/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
         chown ceph. /etc/ceph/ceph.* 
     
     - name: setup ceph manager
@@ -18,7 +19,7 @@
         ceph auth get-or-create mgr.{{ item }} mon 'allow profile mgr' osd 'allow *' mds 'allow *'
         ceph auth get-or-create mgr.{{ item }}| tee /etc/ceph/ceph.mgr.admin.keyring
         cp /etc/ceph/ceph.mgr.admin.keyring /var/lib/ceph/mgr/ceph-{{ item }}/keyring
-        chown ceph. /etc/ceph/ceph.mgr.admin.keyring
+        chown -R ceph. /etc/ceph/
         chown -R ceph. /var/lib/ceph/mgr/ceph-{{ item }}
       with_items: "{{ hostvars[inventory_hostname].name }}"
     
@@ -29,10 +30,59 @@
         systemctl start ceph-mgr@{{ item }}
       with_items:  "{{ hostvars[inventory_hostname].name }}"
     
-    - name: test cluster
+    - name: create folder for monitor backups
       tags: ceph_manager
-      shell: ceph -s
-    
+      shell: |
+        mkdir -p /home/bastion/monitor/backup
+        chown -R bastion. /home/bastion/
+
+
+    - name: register fsid
+      tags: ceph_monitor_restore
+      shell: fsid=`cat /etc/ceph/ceph.conf  | grep fsid | cut -d ' '  -f 3` && echo $fsid 
+      register: fsid
+
+    - name: generate new ceph config
+      tags: ceph_monitor_restore
+      ansible.builtin.blockinfile:
+        path: /etc/ceph/ceph.conf
+        insertafter: BOF
+        block: |
+          [global]
+          # specify cluster network for monitoring
+          cluster network = {{ private_cidr }}
+          # specify public network
+          public network = {{ private_cidr }}
+          # specify UUID genarated above
+          fsid = {{ fsid.stdout }}
+          # specify IP address of Monitor Daemon
+          mon host = {{item}}
+          # specify Hostname of Monitor Daemon
+          mon initial members = mgr1
+      with_items: "{{ hostvars[inventory_hostname].networkInterfaces[0].networkIP }}"
+
+    - name: copy monitor files into dir
+      tags: ceph_monitor_restore
+      shell: |
+        mv /home/bastion/monitor/backup/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
+        
+    - name: enable monitor and create monmap
+      tags: ceph_monitor_restore
+      shell: |
+        ceph-mon --cluster ceph --mkfs   -i mgr1 --monmap /etc/ceph/monmap --keyring /etc/ceph/ceph.mon.keyring
+        monmaptool --create --add mgr1  {{item}}:6789 --fsid {{fsid.stdout}}  /etc/ceph/monmap 
+        chown -R ceph. /var/lib/ceph/
+        chown -R ceph. /etc/ceph/
+      with_items: "{{ hostvars[inventory_hostname].networkInterfaces[0].networkIP }}"
+
+
+    - name: start service
+      tags: ceph_monitor_restore
+      shell: |
+        systemctl enable --now ceph-mon@mgr1
+        systemctl start ceph-mon@mgr1
+        systemctl status ceph-mon@mgr1
+
     - name: enable dashboard
       tags: ceph_manager_dashboard
       shell: |
@@ -50,5 +100,4 @@
         ceph dashboard ac-user-create serverworld -i /home/bastion/pass.txt administrator
         ceph dashboard ac-user-create serverworld -i pass.txt administrator
         ceph mgr services
-    
     

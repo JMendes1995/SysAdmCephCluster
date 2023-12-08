@@ -73,7 +73,7 @@ After the creation of the tfstate bucket, the following step has the goal of pro
 
 ##### Generate ssh proxy locally
 ```bash
-ansible-playbook -i inventory bastion/build_local_proxy.yaml --tags proxy_jump --ask-become-pass  -vv
+ansible-playbook -i inventory bastion/build_local_proxy.yaml --tags apply --ask-become-pass  -vv
 ```
 
 In order to access all the infrastructure, hosted in the private subnet (10.10.0.0/24), is crucial to create a proxy jump between the localhost where the ansible is being executed to the destination network. Therefore, regarding that the bastion host that is accessible from the public network on port 22 is being used as a proxy to jump to the Ceph Network.
@@ -96,7 +96,7 @@ In this ansible command is passed the parameters `-l all` to force the execution
 
 ##### Configure ceph monitor node
 ```bash
-ansible-playbook -i inventory cephCluster/cephMonitor.yaml -l monitor --tags ceph_monitor_admin,ceph_monitor,ceph_osd,ceph_rbd,ceph_manager   --key-file "../ssh_keys/idrsa"  -vv
+ansible-playbook -i inventory cephCluster/cephMonitor.yaml -l monitor --tags ceph_monitor,ceph_osd,ceph_rbd,ceph_manager,backup   --key-file "../ssh_keys/idrsa"  -vv
 ```
 The cephMonitor playbook configures the monitor admin and the remaining monitors, and sends to the other ceph instances the ceph config file and the keyring to join the ceph cluster.
 
@@ -106,6 +106,12 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
 ```
 The cephManager playbook configures the manager nodes and enable the ceph dashboard
 
+##### Configure ceph manager dashboard
+```bash
+ansible-playbook -i inventory cephCluster/cephDashboard.yaml -l manager --tags ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
+
+ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_monitor_restore --key-file "../ssh_keys/idrsa"  -vv
+```
 ##### configure osd node
 ```bash
 ansible-playbook -i inventory cephCluster/cephOSD.yaml -l osd --tags ceph_osd --key-file "../ssh_keys/idrsa"  -vv
@@ -118,7 +124,11 @@ The cephOSD playbook formats the entire HDD volume and mount it on `/dev/sdb1`, 
 
 ##### Configure rbd node
 ```bash
-ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags ceph_rbd --key-file "../ssh_keys/idrsa"  -vv
+ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags ceph_rbd,database,backup --key-file "../ssh_keys/idrsa"  -vv
+```
+##### restore database 
+```bash
+ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags restore --key-file "../ssh_keys/idrsa"  -vv
 ```
 The cephRBD playbook mainly creates the RBD Pool, maps the block device, format the volume with XFS, and mount the volume into `/dev/rbd0`.
 
@@ -147,7 +157,7 @@ ceph osd df
 ##### Access dashboard via proxyjump
 ```bash
 cd SysAdmCephCluster
-ssh -i ssh_keys/idrsa -L 127.0.0.1:8443:(ceph_manager_private_address):8443 bastion@(bastion_public_address)
+ssh -i ../ssh_keys/idrsa -L 127.0.0.1:8443:(ceph_manager_private_address):8443 bastion@(bastion_public_address)
 ```
 
 <details open>
@@ -171,3 +181,17 @@ cd SysAdmCephCluster/ansible
 
 ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=destroy"  -vv
 ```
+
+
+#### restore monitor
+
+ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_monitor_restore --key-file "../ssh_keys/idrsa"  -vv
+
+### postgres commands
+
+sudo -u postgres psql -c "select * from randomtable limit  50;"
+
+list tables 
+\dt
+select * from 
+select * from randomtable limit  50;

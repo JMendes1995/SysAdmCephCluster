@@ -22,7 +22,7 @@
         shell: |
           eval "$(ssh-agent)"
           ssh-add /home/bastion/.ssh/idrsa     
-      - name: add osd ssh config
+      - name: add ceph ssh config
         tags: ceph_init
         shell: |
           tee -a /etc/ssh/ssh_config << EOF

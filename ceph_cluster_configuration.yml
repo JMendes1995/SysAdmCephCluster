@@ -33,13 +33,13 @@ hosts: {
     tags: ["ssh", rbd]
   },
   monitor: {
-    node_numbers: 2,
+    node_numbers: 1,
     machine_type: f1-micro,
     provisioning_model: SPOT,
     tags: ["ssh", "monitor"]
   },
   manager: {
-    node_numbers: 2,
+    node_numbers: 1,
     machine_type: f1-micro,
     provisioning_model: SPOT,
     tags: ["ssh", "manager"]
