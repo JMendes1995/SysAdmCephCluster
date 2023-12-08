@@ -121,13 +121,17 @@
           echo "postgresql service is =>"$postgres_service_status
           if [ "$postgres_service_status" != "active" ]; then
               exit 1
-          fi
-          if (( "$nb_backups" >= 5 )); then
-            first_backup=`ls -la  /home/bastion/postgres/backup/ | tail -n +4 | head -1 | awk '{print $9}'`
-            rm -rf /home/bastion/postgres/backup/$first_backup
-            tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
-          else
-            tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+          else        
+            if (( "$nb_backups" >= 5 )); then
+              echo "number of backups exceeds maximum of 5"
+              first_backup=`ls -la  /home/bastion/postgres/backup/ | tail -n +4 | head -1 | awk '{print $9}'`
+              echo "removing oldest backup" $first_backup
+              rm -rf /home/bastion/postgres/backup/$first_backup
+              echo "generating backup => database_bk_$t.tar.gz"
+              tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+            else
+              tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+            fi
           fi
     - name: create cronjob
       tags: backup 

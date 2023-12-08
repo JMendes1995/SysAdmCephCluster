@@ -155,7 +155,6 @@
       path: /home/bastion/cronjob.sh
       insertbefore: "someline:"
       block: |
-        rsync  -e "ssh -o StrictHostKeyChecking=no" -arv /var/lib/ceph/mon/ceph-{{item.instance_name}}/* bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/
         rsync  -e "ssh -o StrictHostKeyChecking=no" -arv /etc/ceph/ceph.mon.keyring bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/
     with_items:
         - { instance_name: "{{ hostvars[inventory_hostname].name }}", 

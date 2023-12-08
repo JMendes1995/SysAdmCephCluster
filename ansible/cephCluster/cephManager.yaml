@@ -65,7 +65,9 @@
       tags: ceph_monitor_restore
       shell: |
         mv /home/bastion/monitor/backup/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
-        
+        chown -R ceph. /var/lib/ceph/
+        chown -R ceph. /etc/ceph/
+    
     - name: enable monitor and create monmap
       tags: ceph_monitor_restore
       shell: |

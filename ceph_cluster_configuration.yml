@@ -21,10 +21,10 @@ hosts: {
     machine_type: f1-micro,
     provisioning_model: SPOT,
     tags: ["ssh", "osd"],
-    volumes_per_instance: 1,
+    volumes_per_instance: 2,
     volume_sizes_gb: 5,
     volume_type: pd-standard,
-    volume_location: ["/dev/sdb"]
+    volume_location: ["/dev/sdb", "/dev/sdc"]
   },
   rbd: {
     node_numbers: 1,

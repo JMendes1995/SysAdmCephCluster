@@ -81,7 +81,7 @@ The following image shows an example of a ssh_config file after executing the an
 In this ansible command is passed the `proxy_jump` tag, and the `--ask-become-pass` to escalate priveligies to write into `/etc/ssh/ssh_config` file
 <details open>
   <summary>/etc/ssh/ssh_config example</summary>
-<IMG src=./resources/proxy_jump_example.png></IMG>
+<IMG src=./resources/ssh_proxy_bastion.png></IMG>
 </details>
 
 
@@ -102,14 +102,16 @@ The cephMonitor playbook configures the monitor admin and the remaining monitors
 
 ##### Configure ceph manager nodes
 ```bash
-ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager,ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
+ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager --key-file "../ssh_keys/idrsa"  -vv
 ```
 The cephManager playbook configures the manager nodes and enable the ceph dashboard
 
 ##### Configure ceph manager dashboard
 ```bash
-ansible-playbook -i inventory cephCluster/cephDashboard.yaml -l manager --tags ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
-
+ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
+```
+##### restore monitor
+```bash
 ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_monitor_restore --key-file "../ssh_keys/idrsa"  -vv
 ```
 ##### configure osd node
@@ -126,6 +128,11 @@ The cephOSD playbook formats the entire HDD volume and mount it on `/dev/sdb1`, 
 ```bash
 ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags ceph_rbd,database,backup --key-file "../ssh_keys/idrsa"  -vv
 ```
+<details open>
+  <summary>Client (RDB Node)</summary>
+<IMG src=./resources/rdb_nodes.png></IMG>
+</details>
+
 ##### restore database 
 ```bash
 ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags restore --key-file "../ssh_keys/idrsa"  -vv
@@ -160,10 +167,6 @@ cd SysAdmCephCluster
 ssh -i ../ssh_keys/idrsa -L 127.0.0.1:8443:(ceph_manager_private_address):8443 bastion@(bastion_public_address)
 ```
 
-<details open>
-  <summary>Instaces list</summary>
-<IMG src=./resources/hostlist.png></IMG>
-</details>
 
 ### Destroy cluster
 
@@ -188,10 +191,60 @@ ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=des
 ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_monitor_restore --key-file "../ssh_keys/idrsa"  -vv
 
 ### postgres commands
+<details open>
+  <summary>fist 50 results from dummy database</summary>
+    
+  ```bash root@rbd1:~# sudo -u postgres psql -c "select * from randomtable      limit  50;"
+   id |           random_text            |   random_number    | random_integer | random_date
+  ----+----------------------------------+--------------------+----------------+-------------
+    1 | b06af2d3106b653d77a0625eb1cafb2a |  196.1698110577663 |             88 | 2567-10-01
+    2 | 60e44f1937935bb73bd46b4c6ae5b1b8 | 187.50099342575544 |            507 | 2419-08-10
+    3 | 05f0476cc36b58b233b9116a82100b78 |  642.6980756701013 |             23 | 2506-11-14
+    4 | e0a0d554c343e7c7e1cf312ff780646d |  92.62785448726873 |            514 | 2432-04-26
+    5 | 2e3beff40cb537281d1a1ce481509686 |  87.55502664444026 |            582 | 2578-02-14
+    6 | 5f40d2945c8443dc7e64bbaad71db96c |  412.5930307965775 |            711 | 2236-07-17
+    7 | d4f49b3c04dc6b8f0052aabb952d078a |  724.6586797408154 |            279 | 2766-07-23
+    8 | 8c5325d8445178dc423270824c05a4bf | 165.49187002089784 |            229 | 2755-12-01
+    9 | 6460f21ab04f7a3d58b40ea76ea4d125 |    779.99208007664 |            852 | 2163-12-10
+   10 | 8192919c71cd29220c1c46169afb080d |  961.6014742822747 |            287 | 2723-01-12
+   11 | 3b95a5bc1ff228bb85ba0db8200853ac | 488.08139204023627 |            317 | 2213-12-13
+   12 | b6b81856cb1b627e919712b2387b0295 |  770.0333900128958 |            624 | 2330-02-08
+   13 | 82ba1d7159d979225bac2dd197784086 | 360.72665659398575 |            936 | 2447-04-19
+   14 | 230f5cdb59dba8bdddd393be52bd0338 |  7.678168694612797 |            424 | 2337-04-15
+   15 | 60a9d75251a602d34abdcfa258d4e687 |  544.3859142302358 |            941 | 2005-05-12
+   16 | 865768fd8df6a7a88681a1245d95b1e3 |  145.1951243013969 |            508 | 2174-01-18
+   17 | f8fcd87d6bd84a431e6f4eac494ef6c2 |  265.7649323542377 |            741 | 2145-01-25
+   18 | ba05450928345f17e083019f5f2c962b |  685.9257099105307 |            271 | 2550-02-19
+  ```
+</details>
 
-sudo -u postgres psql -c "select * from randomtable limit  50;"
+<details open>
+  <summary>crontab logs</summary>
 
-list tables 
-\dt
-select * from 
-select * from randomtable limit  50;
+  ```bash root@rbd1:~# tail -f /home/bastion/crontab.log
+  number of backups =>0
+  postgresql service is =>active
+  number of backups =>1
+  postgresql service is =>active
+  number of backups =>2
+  postgresql service is =>active
+  number of backups =>3
+  postgresql service is =>active
+  number of backups =>4
+  postgresql service is =>active
+  number of backups =>5
+  postgresql service is =>active
+  number of backups exceeds maximum of 5
+  removing oldest backup database_bk_1702043521.tar.gz
+  generating backup => database_bk_1702043821.tar.gz
+  number of backups =>5
+  postgresql service is =>active
+  number of backups exceeds maximum of 5
+  removing oldest backup database_bk_1702043581.tar.gz
+  generating backup => database_bk_1702043881.tar.gz
+  number of backups =>5
+  postgresql service is =>inactive
+  number of backups =>5
+  postgresql service is =>inactive
+  ```
+</details>
