@@ -12,7 +12,7 @@
 6. [How to setup the ceph cluster project](#setup)
 
 ### Architecture diagram <a name="diagram"></a>
-![image info](./resources/network_diagram.png)
+![image info](./resources/ceph_cluster_diagram.png)
 #### Architecture decisions and considerations <a name="arch_decesions"></a>
 #### Project Components <a name="p_components"></a>
 #### Terraform structure <a name="tf"></a>
