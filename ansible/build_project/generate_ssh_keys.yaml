@@ -7,5 +7,6 @@
   tasks:
     - name: create bastion ssh-keys 
       shell: |
+        rm -fr ../../ssh_keys
         mkdir ../../ssh_keys
         ssh-keygen -t rsa -b 4096 -f ../../ssh_keys/idrsa -C "{{username}}" -q -N ""

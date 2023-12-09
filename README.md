@@ -139,8 +139,8 @@ For scope was tasked to crate 2 backup mechanisms
 * authenticate with Google cloud cli `gcloud auth application-default login`
 * Identity and Access Management (IAM) API enabled
 * Compute Engine enabled (action made through GCP UI)
-* install google auth library `pip install requests google-auth`
-* install python requests library
+* install google auth library `pip install google-auth`
+* install python requests library `pip install requests`
 
 
 ### Enter into ansible folder
@@ -152,7 +152,7 @@ cd SysAdmCephCluster/ansible
 ```bash
 ansible-playbook -i inventory build_project/generate_ssh_keys.yaml --tags ssh_keys -vv
 ```
-Example of a ansible command that generates the ssh keys that will be used to access all istances.
+This playbook generates SSH keys for the necessary environment access. These keys are stored locally in the root directory of the repository.
 
 #### create tf state bucket, build tfvars and build inventory
 ```bash
