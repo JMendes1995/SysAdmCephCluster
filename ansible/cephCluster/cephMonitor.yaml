@@ -7,7 +7,7 @@
   - name: import init task
     tags: ceph_init
     import_tasks: ../common/init_task.yaml
-    
+
   - name: generate uuid
     run_once: true
     tags: ceph_monitor
@@ -72,7 +72,7 @@
     shell: |
       mkdir /var/lib/ceph/mon/ceph-{{ item }}
       ceph-mon --cluster ceph --mkfs -i {{ item }} --monmap /etc/ceph/monmap --keyring /etc/ceph/ceph.mon.keyring
-      chown ceph. /etc/ceph/ceph.*
+      chown ceph. /etc/ceph/ceph.*  
       chown -R ceph. /var/lib/ceph/mon/ceph-{{ item }} /var/lib/ceph/bootstrap-osd
     with_items: "{{ hostvars[inventory_hostname].name }}"
   

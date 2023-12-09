@@ -91,11 +91,11 @@
         " psql <<__END__
         CREATE TABLE randomtable AS
         SELECT 
-        	generate_series(1,1000) AS id, 
+        	generate_series(1,200) AS id, 
         	md5(random()::text) AS random_text, 
-        	random() * 1000 AS random_number,
-        	floor(random() * 1000) AS random_integer,
-        	'2000-01-01'::date + trunc(random() * 366 * 1000)::int random_date;
+        	random() * 200 AS random_number,
+        	floor(random() * 200) AS random_integer,
+        	'2000-01-01'::date + trunc(random() * 366 * 200)::int random_date;
         __END__
         "
 

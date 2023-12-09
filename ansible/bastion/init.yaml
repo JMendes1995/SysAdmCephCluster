@@ -1,14 +1,3 @@
-
-- hosts: bastion
-  remote_user: bastion
-  become: true
-  vars_files:
-    - ../../ceph_cluster_configuration.yml
-  tasks:
-    - name: import init task
-      tags: ceph_init
-      import_tasks: ../common/init_task.yaml
-      
 - hosts: 127.0.0.1
   connection: local
   become: true
@@ -44,3 +33,13 @@
               ProxyCommand ssh -o StrictHostKeychecking=no -i ../ssh_keys/idrsa  {{username}}@{{ item }} -W %h:%p
           marker: "# {mark} proxy jump ceph cluster"
         with_items: "{{hostvars[inventory_hostname].groups.bastion[0]}}"
+
+- hosts: bastion
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: import init task
+      tags: ceph_init
+      import_tasks: ../common/init_task.yaml
