@@ -1,3 +1,14 @@
+
+- hosts: bastion
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: import init task
+      tags: ceph_init
+      import_tasks: ../common/init_task.yaml
+      
 - hosts: 127.0.0.1
   connection: local
   become: true

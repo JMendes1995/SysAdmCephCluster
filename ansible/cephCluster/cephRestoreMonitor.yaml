@@ -1,0 +1,59 @@
+- hosts: monitor
+  remote_user: bastion
+  become: true
+  vars_files:
+   - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: import init task
+      tags: ceph_init
+      import_tasks: ../common/init_task.yaml
+    - name: create restore directory
+      tags: ceph_init
+      shell: |
+          mkdir -p /home/bastion/monitor/backup/vars/ /home/bastion/monitor/backup/conf/
+          chown -R bastion. /home/bastion/
+
+- hosts: manager
+  remote_user: bastion
+  become: true
+  vars_files:
+    - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: sync files to monitor node
+      tags: monitor_restore
+      shell: |
+          rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /home/bastion/monitor/backup/vars/ bastion@{{item.monitor_ip}}:/home/bastion/monitor/backup/vars/
+          rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /home/bastion/monitor/backup/conf/  bastion@{{item.monitor_ip}}:/home/bastion/monitor/backup/conf/
+      with_items:
+        - { instance_name: "{{ hostvars[inventory_hostname].name }}", 
+          monitor_ip: "{{hostvars[inventory_hostname].groups.monitor[0]}}"
+        }
+
+
+- hosts: monitor
+  remote_user: bastion
+  become: true
+  vars_files:
+   - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: move files to ceph folders
+      tags: monitor_restore_service
+      shell: |
+        mv /home/bastion/monitor/backup/conf/* /etc/ceph/
+        mv /home/bastion/monitor/backup/vars/ceph/* /var/lib/ceph/
+        chown -R ceph. /etc/ceph/ /var/lib/ceph/
+      with_items: "{{ hostvars[inventory_hostname].name }}"
+
+- hosts: monitor
+  remote_user: bastion
+  become: true
+  vars_files:
+   - ../../ceph_cluster_configuration.yml
+  tasks:
+    - name: restart service
+      tags: monitor_restore_service
+      shell: |
+        systemctl enable --now ceph-mon@{{item}}
+        systemctl restart ceph-mon@{{item}}
+        systemctl status ceph-mon@{{item}}
+      with_items: "{{ hostvars[inventory_hostname].name }}"

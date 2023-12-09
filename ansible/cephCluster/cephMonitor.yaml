@@ -4,6 +4,10 @@
   vars_files:
    - ../../ceph_cluster_configuration.yml
   tasks:
+  - name: import init task
+    tags: ceph_init
+    import_tasks: ../common/init_task.yaml
+    
   - name: generate uuid
     run_once: true
     tags: ceph_monitor
@@ -55,7 +59,7 @@
   - name: generate monitor map
     tags: ceph_monitor
     run_once: true
-    shell: monmaptool --create --add {{ item.instance_name }} {{ item.private_ip }}:6789 --fsid {{ item.uuid }} /etc/ceph/monmap
+    shell: monmaptool --create --add {{ item.instance_name }} {{item.private_ip}} --fsid {{ item.uuid }} /etc/ceph/monmap
     with_items: 
       - { uuid: "{{ uuid.stdout }}", 
           instance_name: "{{ hostvars[inventory_hostname].name }}", 
@@ -86,34 +90,6 @@
     shell: |
       ceph mon enable-msgr2
       ceph config set mon auth_allow_insecure_global_id_reclaim false
-
-  # - name: copy ceph monitor admin to other monitor  
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP == hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor_admin
-  #   shell: |
-  #     scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.client.admin.keyring bastion@{{item}}:/home/bastion/
-  #     scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null /etc/ceph/ceph.mon.keyring bastion@{{item}}:/home/bastion/
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
-
-  # - name: copy ceph monitor admin to other monitor
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor
-  #   shell: |
-  #     mv /home/bastion/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
-  #     mv /home/bastion/ceph.mon.keyring /etc/ceph/ceph.mon.keyring
-  #     chown -R ceph. /etc/ceph/
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
-  
-  # - name: add another monitor to ceph cluster
-  #   when: "hostvars[inventory_hostname].networkInterfaces[0].networkIP != hostvars[inventory_hostname].groups.monitor[0] and hostvars[inventory_hostname].groups.monitor|length > 1"
-  #   tags: ceph_monitor
-  #   shell: |
-  #     mkdir /var/lib/ceph/mon/ceph-{{hostvars[inventory_hostname].name}}
-  #     ceph auth get mon. -o /home/bastion/keyring
-  #     ceph mon getmap -o /home/bastion/keyring_map
-  #     ceph-mon -i {{hostvars[inventory_hostname].name}} --mkfs --monmap /home/bastion/keyring_map --keyring /home/bastion/keyring
-  #     ceph-mon -i {{hostvars[inventory_hostname].name}}
-  #   with_items: "{{hostvars[inventory_hostname].groups.monitor[1:]}}"
 
   - name: copy ceph conf files to manager node
     tags: ceph_manager
@@ -155,7 +131,17 @@
       path: /home/bastion/cronjob.sh
       insertbefore: "someline:"
       block: |
-        rsync  -e "ssh -o StrictHostKeyChecking=no" -arv /etc/ceph/ceph.mon.keyring bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/
+        #!/bin/bash
+        mon_service_status=`systemctl is-active ceph-mon@{{item.instance_name}}`
+        if [ "$mon_service_status" != "active" ]; then
+            echo "service is not active quiting..."
+            exit 1
+        else      
+          echo "syncing directory -> /var/lib/ceph/"
+          echo "syncing directory -> /etc/ceph/"
+          rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /var/lib/ceph bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/vars/
+          rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /etc/ceph/ bastion@{{item.manager_ip}}:/home/bastion/monitor/backup/conf/
+        fi
     with_items:
         - { instance_name: "{{ hostvars[inventory_hostname].name }}", 
           manager_ip: "{{hostvars[inventory_hostname].groups.manager[0]}}"
@@ -167,4 +153,5 @@
       path: /etc/crontab
       insertbefore: "someline:"
       block: |
-       */1 * * * * root /home/bastion/cronjob.sh
+        SHELL=/bin/bash
+        */1 * * * * root /home/bastion/cronjob.sh >> /home/bastion/cronjob.log 2>&1

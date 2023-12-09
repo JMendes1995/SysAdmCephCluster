@@ -15,7 +15,6 @@ module "CephManager" {
     username            = var.username
     defaul_sa_name      = data.google_compute_default_service_account.default_sa.email
     available_zones     = data.google_compute_zones.available_zones.names.*
-    
     packages            = "ceph ceph-mgr-dashboard rsync"
 }
 
@@ -40,6 +39,7 @@ module "CephMonitor" {
     defaul_sa_name      = data.google_compute_default_service_account.default_sa.email
     available_zones     = data.google_compute_zones.available_zones.names.*
     packages            = "ceph rsync"
+    static_ip           = "10.10.0.10"
     
 }
 

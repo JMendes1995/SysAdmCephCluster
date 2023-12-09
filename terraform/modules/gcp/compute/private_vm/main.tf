@@ -19,6 +19,7 @@ resource "google_compute_instance" "vm" {
     network_interface {
       network = var.vpc_id
       subnetwork = var.subnet
+      network_ip = var.static_ip
     }
     tags = var.tags
     metadata = {

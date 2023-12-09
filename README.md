@@ -1,4 +1,5 @@
 # SysAdmCephCluster
+
 ###### Table of contents
 1. [Architecture diagram](#diagram)
     1. [Architecture decisions and considerations](#arch_decesions)
@@ -124,10 +125,47 @@ ansible
 </details>
 
 ### Configurations <a name="configs"></a>
+Configuring a ceph cluster his components can be achieved by several pathways. In this project we opted for an manual instalation where challenges us to enhance the understanding over the technology and learn how the tool work behind the scenes.
+
+The first component configured is the "monitor" node where is firstly generated the id of the cluster with the command `uuidgen`, generated the ceph.conf file with the parameters `cluster network`, `monitor host` and `mon initial menmbers`, the keyring for `ceph monitor`, `client admin` and `osd bootstrap` and inport all non monitor keyring's into the monitor keyring file since is the node service that map of the state of the entire cluster. 
+
+
 ### Backup strategies <a name="bk"></a>
 For scope was tasked to crate 2 backup mechanisms
 
+<details >
+  <summary>crontab logs</summary>
+
+  ```bash root@rbd1:~# tail -f /home/bastion/crontab.log
+  number of backups =>0
+  postgresql service is =>active
+  number of backups =>1
+  postgresql service is =>active
+  number of backups =>2
+  postgresql service is =>active
+  number of backups =>3
+  postgresql service is =>active
+  number of backups =>4
+  postgresql service is =>active
+  number of backups =>5
+  postgresql service is =>active
+  number of backups exceeds maximum of 5
+  removing oldest backup database_bk_1702043521.tar.gz
+  generating backup => database_bk_1702043821.tar.gz
+  number of backups =>5
+  postgresql service is =>active
+  number of backups exceeds maximum of 5
+  removing oldest backup database_bk_1702043581.tar.gz
+  generating backup => database_bk_1702043881.tar.gz
+  number of backups =>5
+  postgresql service is =>inactive
+  number of backups =>5
+  postgresql service is =>inactive
+  ```
+</details>
+
 ### Troubleshooting steps <a name="trbl"></a>
+
 ### System Recovery <a name="recovery"></a>
 
 ## How to setup the ceph project <a name="setup"></a>
@@ -181,7 +219,7 @@ After the creation of the tfstate bucket, the following step is to provision the
 
 ##### Generate ssh proxy locally
 ```bash
-ansible-playbook -i inventory bastion/build_local_proxy.yaml --tags apply --ask-become-pass  -vv
+ansible-playbook -i inventory bastion/init.yaml --tags ceph_init,apply --ask-become-pass --key-file "../ssh_keys/idrsa"  -vv
 ```
 
 In order to access all the infrastructure, hosted in the private subnet (10.10.0.0/24), for security purpuse is crucial to create a proxy jump between the localhost where the ansible is being executed to the destination network. Therefore, regarding that bastion host that is accessible from the public network on port 22 is being used as a proxy to jump to the Ceph Network.
@@ -301,12 +339,13 @@ ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=des
 
 
 #### restore monitor
-
+```bash
 ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_monitor_restore --key-file "../ssh_keys/idrsa"  -vv
+```
 
 ### postgres commands
 <details open>
-  <summary>fist 50 results from dummy database</summary>
+  <summary>first 50 results from postgres database</summary>
     
   ```bash 
 
@@ -334,33 +373,3 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
   ```
 </details>
 
-<details open>
-  <summary>crontab logs</summary>
-
-  ```bash root@rbd1:~# tail -f /home/bastion/crontab.log
-  number of backups =>0
-  postgresql service is =>active
-  number of backups =>1
-  postgresql service is =>active
-  number of backups =>2
-  postgresql service is =>active
-  number of backups =>3
-  postgresql service is =>active
-  number of backups =>4
-  postgresql service is =>active
-  number of backups =>5
-  postgresql service is =>active
-  number of backups exceeds maximum of 5
-  removing oldest backup database_bk_1702043521.tar.gz
-  generating backup => database_bk_1702043821.tar.gz
-  number of backups =>5
-  postgresql service is =>active
-  number of backups exceeds maximum of 5
-  removing oldest backup database_bk_1702043581.tar.gz
-  generating backup => database_bk_1702043881.tar.gz
-  number of backups =>5
-  postgresql service is =>inactive
-  number of backups =>5
-  postgresql service is =>inactive
-  ```
-</details>

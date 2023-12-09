@@ -4,6 +4,9 @@
   vars_files:
     - ../../ceph_cluster_configuration.yml
   tasks:
+    - name: import init task
+      tags: ceph_init
+      import_tasks: ../common/init_task.yaml
     - name: move files to ceph folder
       tags: ceph_rbd
       shell: |
@@ -120,6 +123,7 @@
           postgres_service_status=`systemctl is-active postgresql`
           echo "postgresql service is =>"$postgres_service_status
           if [ "$postgres_service_status" != "active" ]; then
+              echo "postgresql service is down!"
               exit 1
           else        
             if (( "$nb_backups" >= 5 )); then
@@ -129,10 +133,14 @@
               rm -rf /home/bastion/postgres/backup/$first_backup
               echo "generating backup => database_bk_$t.tar.gz"
               tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+              rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /home/bastion/postgres/backup/database_bk_$t.tar.gz bastion@{{item}}:/home/bastion/postgres/backup/
             else
               tar -czvf /home/bastion/postgres/backup/database_bk_$t.tar.gz database/ >&/dev/null
+              rsync  -e "ssh -o StrictHostKeyChecking=no" -ar /home/bastion/postgres/backup/database_bk_$t.tar.gz bastion@{{item}}:/home/bastion/postgres/backup/
             fi
           fi
+      with_items: "{{hostvars[inventory_hostname].groups.manager[0]}}"
+
     - name: create cronjob
       tags: backup 
       ansible.builtin.blockinfile:
@@ -140,7 +148,7 @@
         insertbefore: "someline:"
         block: |
           SHELL=/bin/bash
-          */1 * * * * root /home/bastion/cronjob.sh -delete >> /home/bastion/crontab.log 2>&1
+          */1 * * * * root /home/bastion/cronjob.sh -delete >> /home/bastion/cronjob.log
 
 
     - name: restore database

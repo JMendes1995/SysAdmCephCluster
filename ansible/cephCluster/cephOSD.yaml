@@ -5,7 +5,9 @@
   vars_files:
    - ../../ceph_cluster_configuration.yml
   tasks:
-
+    - name: import init task
+      tags: ceph_init
+      import_tasks: ../common/init_task.yaml
     - name: move files to ceph folder
       tags: ceph_osd
       shell: |

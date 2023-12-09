@@ -48,3 +48,8 @@ variable "available_zones"{
 variable "packages"{
   type = string
 }
+
+variable "static_ip"{
+  type = string
+  default = ""
+}
