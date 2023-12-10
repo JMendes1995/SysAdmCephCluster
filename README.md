@@ -198,19 +198,65 @@ Troubleshooting is a crucial process to identify and resolve issues and raise aw
 In the event of a failure, system recovery can be achieved by restoring the pre-established backups. The restoring process for the monitor involves executing the cephRestoreMonitor playbook, which adds the data to their respective directories. After restoring the data, the service is then ready to be restarted. Similarly to the monitor restore, the postgres database recovery is quite similar diverging if is used the backup stored locally or remotely in the manager node. Moreover, to accomplish the database restore the `cephRBD` playbook with the tag restore is sufficient to recover the database service locally.
 
 ## How to setup the ceph project <a name="setup"></a>
-### Prerequisites<a name="req"></a>
-* google cloud cli installed
-* ansible installed
-* execute `ansible-galaxy collection install google.cloud` for ansible access gcp api
-* terraform installed `version >=v1.6.1`
-* authenticate with Google cloud cli `gcloud auth application-default login`
-* Identity and Access Management (IAM) API enabled
-* Compute Engine enabled (action made through GCP UI)
-* install google auth library `pip install google-auth`
-* install python requests library `pip install requests`
 
+### Prerequisites <a name="req"></a>
+#### Google Cloud CLI
 
-### Enter into ansible folder
+Make sure the Google Cloud CLI is installed on your Linux machine. You can install it using the following commands:
+
+```bash
+sudo apt-get update
+sudo apt-get install google-cloud-sdk
+```
+
+After installation, authenticate with Google Cloud CLI:
+
+```bash
+gcloud auth application-default login
+```
+
+#### Ansible
+Ensure Ansible is installed on your Linux machine. You can install it using your distribution's package manager. For example, on Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install ansible
+```
+#### Ansible Collections
+
+Install the google.cloud Ansible collection:
+
+```bash
+ansible-galaxy collection install google.cloud
+```
+
+#### Terraform
+Install Terraform with a version greater than or equal to v1.6.1. You can download the binary from the official Terraform website or use a package manager. For example, on Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install terraform
+```
+#### Google Auth Library and Python Requests Library
+
+Install the required Python libraries using pip:
+
+```bash
+pip install google-auth requests
+```
+#### Additional Configurations
+
+##### Enable IAM API
+Ensure that the Identity and Access Management (IAM) API is enabled on your Google Cloud project. You can do this through the Google Cloud Console.
+
+##### Enable Compute Engine
+Ensure Compute Engine is enabled for your project. You can enable it through the Google Cloud Console.
+
+With these installations and configurations, your Linux machine should be set up with the necessary prerequisites for using Ansible and Terraform with Google Cloud Platform (GCP). Adjust the package manager commands as needed based on your Linux distribution.
+
+### Setup VMs and Configurations
+
+#### Enter into ansible folder
 ```bash
 cd SysAdmCephCluster/ansible
 ```
@@ -341,7 +387,7 @@ Furthermore, when is additionaly inserted `database` tag will install postgres, 
 </details>
 
 
-### Usefull commands
+### Useful commands
 ##### Remote access bastion host
 ```bash
 cd SysAdmCephCluster/ansible
