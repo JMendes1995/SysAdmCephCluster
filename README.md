@@ -4,10 +4,9 @@ SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalh
 
 ###### Table of contents
 1. [Architecture diagram](#diagram)
-    1. [Architecture decisions and considerations](#arch_decesions)
-    2. [Project components](#p_components)
-    3. [Terraform structure](#tf)
-    4. [Ansible structure](#ansible)
+    1. [Architecture decisions](#arch_decesions)
+    2. [Terraform structure](#tf)
+    3. [Ansible structure](#ansible)
 2. [Configurations](#configs)
 3. [Backup statagies](#bk)
 4. [System Troubleshooting](#trbl)
