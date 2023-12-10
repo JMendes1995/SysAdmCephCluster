@@ -160,30 +160,34 @@ Similarly, the backup procedures for the RBD Postgres database also take into co
   <summary>RBD crontab logs</summary>
 
   ```bash root@rbd1:~# tail -f /home/bastion/crontab.log
-  number of backups =>0
-  postgresql service is =>active
-  number of backups =>1
-  postgresql service is =>active
-  number of backups =>2
-  postgresql service is =>active
-  number of backups =>3
-  postgresql service is =>active
-  number of backups =>4
-  postgresql service is =>active
-  number of backups =>5
-  postgresql service is =>active
-  number of backups exceeds maximum of 5
-  removing oldest backup database_bk_1702043521.tar.gz
-  generating backup => database_bk_1702043821.tar.gz
-  number of backups =>5
-  postgresql service is =>active
-  number of backups exceeds maximum of 5
-  removing oldest backup database_bk_1702043581.tar.gz
-  generating backup => database_bk_1702043881.tar.gz
-  number of backups =>5
-  postgresql service is =>inactive
-  number of backups =>5
-  postgresql service is =>inactive
+number of backups =>0
+postgresql service is =>active
+number of backups =>1
+postgresql service is =>active
+number of backups =>2
+postgresql service is =>active
+number of backups =>3
+postgresql service is =>active
+number of backups =>4
+postgresql service is =>active
+number of backups =>5
+postgresql service is =>active
+number of backups exceeds maximum of 5
+removing oldest backup database_bk_1702207021.tar.gz
+generating backup => database_bk_1702207321.tar.gz
+number of backups =>5
+postgresql service is =>inactive
+postgresql service is down!
+number of backups =>5
+postgresql service is =>active
+number of backups exceeds maximum of 5
+removing oldest backup database_bk_1702207141.tar.gz
+generating backup => database_bk_1702207561.tar.gz
+number of backups =>5
+postgresql service is =>active
+number of backups exceeds maximum of 5
+removing oldest backup database_bk_1702207201.tar.gz
+generating backup => database_bk_1702207621.tar.gz
   ```
 </details>
 
@@ -249,7 +253,7 @@ ansible-playbook -i inventory bastion/init.yaml --tags ceph_init,apply --ask-bec
 
 In order to access all the infrastructure, hosted in the private subnet (10.10.0.0/24), for security purpuse is crucial to create a proxy jump between the localhost where the ansible is being executed to the destination network. Therefore, regarding that bastion host that is accessible from the public network on port 22 is being used as a proxy to jump to the Ceph Network.
 The following image shows an example of a ssh_config file after executing the ansible command.
-In this ansible command is passed the `proxy_jump` tag, and the `--ask-become-pass` to escalate priveligies to write into `/etc/ssh/ssh_config` file
+In this ansible command is passed the `cep_init,apply` tags, and the `--ask-become-pass` to escalate priveligies to write into `/etc/ssh/ssh_config` file
 
 <details open>
   <summary>/etc/ssh/ssh_config example</summary>
@@ -271,6 +275,10 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
 ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
 ```
 The cephManager playbook configures the manager nodes and enable the ceph dashboard. Based on the tag provided will be configured the ceph_manager if provided the tag `ceph_manager`  whereas if the tag provided is `ceph_manager_dashboard` will enable the dashboard plugin and configureing the user and password.
+<details open>
+  <summary>ceph Dashboard</summary>
+<IMG src=./resources/ceph_dashboard.png></IMG>
+</details>
 
 
 ##### configure osd node
@@ -283,6 +291,11 @@ The cephOSD playbook formats the entire HDD volume and mount it on `/dev/sdb1`, 
   <summary>OSD Node status</summary>
 <IMG src=./resources/osd.png></IMG>
 </details>
+<details open>
+  <summary>OSD df</summary>
+<IMG src=./resources/osd_df.png></IMG>
+</details>
+
 
 ##### Configure rbd node
 ```bash
