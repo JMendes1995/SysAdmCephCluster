@@ -136,9 +136,7 @@ Conversely, the “cephRBD”, configures the client that will create and initia
 
 
 ### Backup strategies <a name="bk"></a>
-Defining backups and restore procedures grants data protection and in downtime scenarios a lower MTTR (Mean time to recover). For the project was designing backup strategies for the monitor node and the Postgres database located in the RBD node. For the monitor node after the installation, the backup procedure which consists of a crontab job that is triggered by the system every minute thereby executing a script that synchronizes with the manager node the files in the  /etc/ceph and /var/lib/ceph folders. Moreover after each execution the output is stored in a log file located in `/home/bastion/crontab.log` to augment the visability towards the backup procedure. To ensure that the data is not corrupted, before generation the backup is verified if the monitor daemon is active otherwise the process will be skipped.
-
-
+Defining backups and restore procedures grants data protection and in downtime scenarios a lower MTTR (Mean time to recover). For the project was designing backup strategies for the monitor node and the Postgres database located in the RBD node. For the monitor node after the installation, the backup procedure which consists of a crontab job that is triggered by the system every minute thereby executing a script that synchronizes with the manager node the files in the `/etc/ceph` and `/var/lib/ceph` folders. Moreover after each execution the output is stored in a log file located in `/home/bastion/crontab.log` to augment the visability towards the backup procedure. To ensure that the data is not corrupted, before generation the backup is verified if the monitor daemon is active otherwise the process will be skipped.
 
 <details >
   <summary>monitor crontab logs</summary>
@@ -187,8 +185,10 @@ Similarly, the backup procedures for the RBD Postgres database also take into co
 </details>
 
 ### Troubleshooting steps <a name="trbl"></a>
+Troubleshooting is a crucial process to identify and resolve issues and raise awareness about what is happening in the system. To troubleshoot failing or misconfigured services multiple commands were used. For instance, if the service is failing the recommended troubleshooting steps are checking the status of the service with the `systemctl status (service name)` command or analysing logs with the command `journalctl -u (service name).` The logs located in `/var/log/ceph/` grant an efficient debugging solution. Additionally, the `ceph -s` command can be used to analyze the status of the cluster or to check the health status by executing the `ceph health` command. On the other hand, the command `ceph df` analyzes data usage and distribution among pools. Finally, the `ceph ODS dump` command provides detailed information about the OSD. It can also be used simultaneously for other resources within the Ceph environment.
 
 ### System Recovery <a name="recovery"></a>
+In the event of a failure, system recovery can be achieved by restoring the pre-established backups. The restoring process for the monitor involves executing the cephRestoreMonitor playbook, which re add the data to their respective directories. Following the successful restoration of data, the service is then ready to be restarted. Similarly to the monitor restore, the postgres database recovery is quite similar diverging if is used the backup stored locally or remotely in the manager node. Moreover, to accomplish the database restore the `cephRBD` playbook with the tag restore is sufficient to recover the database service locally.
 
 ## How to setup the ceph project <a name="setup"></a>
 ### Prerequisites<a name="req"></a>
