@@ -9,7 +9,7 @@ SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalh
     3. [Ansible structure](#ansible)
 2. [Configurations](#configs)
 3. [Backup statagies](#bk)
-4. [System Troubleshooting](#trbl)
+4. [Troubleshooting steps](#trbl)
 5. [System Recovery](#recovery)
 6. [How to setup the ceph cluster project](#setup)
 
