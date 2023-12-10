@@ -1,5 +1,7 @@
 # SysAdmCephCluster
 
+SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalho up202005827@fc.up.pt and Eduardo Correia up201909914@fc.up.pt As part of the semester project for the System Administration class in the Master's program in Network and Information Systems Engineering at the Faculty of Science, University of Porto, the project has the scope of deploying a Ceph cluster in the Google Cloud Platform. This involves a Distributed Storage Cluster, Client Integration, and a Backup Solution with Rsync, using Terraform as an infrastructure provisioner.
+
 ###### Table of contents
 1. [Architecture diagram](#diagram)
     1. [Architecture decisions and considerations](#arch_decesions)
