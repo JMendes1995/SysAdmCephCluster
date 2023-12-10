@@ -1,6 +1,6 @@
 # SysAdmCephCluster
 
-SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalho up202005827@fc.up.pt and Eduardo Correia up201909914@fc.up.pt As part of the semester project for the System Administration class in the Master's program in Network and Information Systems Engineering at the Faculty of Science, University of Porto, the project has the scope of deploying a Ceph cluster in the Google Cloud Platform. This involves a Distributed Storage Cluster, Client Integration, and a Backup Solution with Rsync, using Terraform as an infrastructure provisioner.
+SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalho up202005827@fc.up.pt and Eduardo Correia up201909914@fc.up.pt As part of the semester project for the System Administration class in the Master's program in Network and Information Systems Engineering at the Faculty of Science, University of Porto, the project has the scope of deploying a Ceph cluster in the Google Cloud Platform. This involves a Distributed Storage Cluster, Client Integration, and a Backup Solution with Rsync, using Terraform as the infrastructure provisioner.
 
 ###### Table of contents
 1. [Architecture diagram](#diagram)
@@ -19,75 +19,76 @@ SysAdmCephCluster was developed by Jorge Mendes up202308811@up.pt, José Carvalh
 #### Architecture decisions <a name="arch_decesions"></a>
 In this project, our team established various guidelines that have culminated in the present architecture. One of the essential principles we incorporated is the need for a secure architecture. In a real-life scenario, every cluster must have private access. According to cloud provider’s best practices, the default Virtual Private Cloud (VPC) should only be utilized for testing purposes as it lacks constraints and security measures, posing a severe security risk. Consequently, for this project was created a  **Virtual Private Cloud** with 2 separated private subnets 192.168.0.0/24 and 10.10.0.0/24. The subnet 192.168.0.0/24, is publically accessible as bastion host serves as a proxy jump from the Administrator to the Ceph cluster, while a firewall rule allows inbound public traffic from the Administration public IP address on port 22. Additionally, this subnet was created with the necessary security measures to ensure that the public access does not compromise the overall security of the architecture.
 
-Additionaly, the subnet 10.10.0.0/24 is a private subnet that will host the entire ceph architecture. Therefore, having these resources exposed publicly would pose a significant risk. we defined this subnet as private by implying firewall rules that only allow inbound requests from 192.168.0.0/24 network. However the ceph nodes require access to internet to pull software. Therefore was additionaly createa a NAT router that grants outbound connectivity for ceph instances.
+Additionaly, the subnet 10.10.0.0/24 is a private subnet that will host the entire ceph architecture. Therefore, having these resources exposed publicly would pose a significant risk. we defined this subnet as private by implying firewall rules that only allow inbound requests from 192.168.0.0/24 network. However the ceph nodes require access to internet to pull software. Therefore was additionaly created a NAT router that grants outbound connectivity for ceph instances.
 
-To deploy the architecture into Google Cloud it has decided to divide the deployment into tow separate phases: infrastructure provisioning and configuration management. Terraform was used as an infrastructure as code tool for infrastructure provisioning. While ansible was used for, for configuration management. This segmentation aims to enhance the agility towards the architecture configuration. In case a node faces issues, with Ansible,  it is possible to operate isolated or multiple commands based on defined workflows, tags, and playbook. If the configuration was implied using cloud-init on Terraform, it would be impossible to modify the instance without destroying it and causing downtime.
+To deploy the architecture into Google Cloud it has decided to divide the deployment into tow separate phases: infrastructure provisioning and configuration management. Terraform was used as an infrastructure as code tool for infrastructure provisioning. While ansible was used for configuration management. This segmentation aims to enhance the agility towards the architecture configuration. In case a node faces issues, with Ansible,  it is possible to operate isolated or multiple commands based on defined workflows, tags, and playbook. If the configuration was implied using cloud-init on Terraform, it would be impossible to modify the instance without destroying it and causing downtime.
 
 #### Terraform structure <a name="tf"></a>
-The current project utilizes a terraform structure based on modules, with the `executer.sh` script serving as the primary interface in place of direct terraform commands. This script executes terraform actions based on an input module and operation type (apply or destroy) and thereby reduces the number of required input parameters. Furthermore, the script automatically initializes Terraform and includes Terraform parameters that facilitate the use of a custom tf state backend, which points to a bucket housing tf states. This approach supports concurrent work by two team members on the project without the risk of interfering with each other's resources. 
-The terraform actions performed within the `executer.sh` script occur within an ephemeral target folder with a single execution timespan, during which files from the targeted module and the common folder are copied. The common folder contains terraform variables, backend configuration, and terraform providers. It is worth noting that prior to initiating the project's module provisioning, is required a preemptive provisioning of a bucket that will function as the terraform state backend.
+The current project utilizes a terraform structure based on modules, with the `executer.sh` script serving as the primary interface to execute terraform commands. This script executes terraform actions based on an input module and operation type (apply or destroy) and thereby reduces the number of required input parameters. Furthermore, the script automatically initializes Terraform and includes Terraform parameters that facilitate the use of a custom tf state backend, which points to a bucket housing tf states. This approach supports concurrent work by two team members on the project without the risk of interfering with each other's resources. 
+The terraform actions performed within the `executer.sh` script occur within an ephemeral target folder with a single execution timespan, during the execution, which files from the targeted module and the common folder are copied. The common folder contains terraform variables, backend configuration, and terraform providers. It is worth noting that prior to initiating the project's module provisioning, is required a preemptive provisioning of a bucket that will function as the terraform state backend.
 
 Managing and maintaining infrastructure that involves multiple cloud resources can be overwhelming. To make it easier, cloud architect's commonly use modular approaches reduce the number of duplicated resources, generate fewer dependencies and simplify the creation of resources from the same type. In the presented architecture the resources are located in the “modules” folder and are segregated based on whether they are networking, computing, security or storage resources.
 
-Additionally, the modules available to be provisioned are the “base” module which provisions the VPC, the subnets the nat resources and the firewall rules. The second module is the cephCluster which is responsible for provisioning virtual machine instances and HDD storage intrinsically correlated with the Ceph cluster.
+Additionally, the modules available to be provisioned are the `base` module which provisions the VPC, the subnets the nat resources and the firewall rules. The second module is the `cephCluster` which is responsible for provisioning virtual machine instances and HDD storage devices intrinsically correlated with the Ceph object storage devices (OSD).
 
 
 <details>
   <summary>terraform directory structure</summary>
   
   ```bash
-    terraform
-    ├── base
-    │   ├── locals.tf
-    │   ├── main.tf
-    │   └── outputs.tf
-    ├── cephCluster
-    │   ├── main.tf
-    │   └── remote_state.tf
-    ├── common
-    │   ├── data.tf
-    │   ├── providers.tf
-    │   ├── tfstate_backend.tf
-    │   └── variables.tf
-    ├── env.tfvars
-    ├── executor.sh
-    ├── modules
-    │   └── gcp
-    │       ├── compute
-    │       │   ├── private_vm
-    │       │   │   ├── main.tf
-    │       │   │   ├── outputs.tf
-    │       │   │   └── variables.tf
-    │       │   ├── public_vm
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   └── storage
-    │       │       ├── main.tf
-    │       │       ├── outputs.tf
-    │       │       └── variables.tf
-    │       ├── firewall_rules
-    │       │   ├── main.tf
-    │       │   └── variables.tf
-    │       ├── network
-    │       │   ├── nat
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   ├── subnet
-    │       │   │   ├── main.tf
-    │       │   │   └── variables.tf
-    │       │   └── vpc
-    │       │       ├── main.tf
-    │       │       ├── outputs.tf
-    │       │       └── variables.tf
-    │       └── storage_bucket
-    │           ├── main.tf
-    │           └── variables.tf
-    └── tf_state_bucket
-        ├── main.tf
-        ├── providers.tf
-        ├── terraform.tfstate
-        ├── terraform.tfstate.backup
-        └── variables.tf
+terraform
+├── base
+│   ├── locals.tf
+│   ├── main.tf
+│   └── outputs.tf
+├── cephCluster
+│   ├── main.tf
+│   └── remote_state.tf
+├── common
+│   ├── data.tf
+│   ├── providers.tf
+│   ├── tfstate_backend.tf
+│   └── variables.tf
+├── env.tfvars
+├── executor.sh
+├── modules
+│   └── gcp
+│       ├── compute
+│       │   ├── private_vm
+│       │   │   ├── main.tf
+│       │   │   ├── outputs.tf
+│       │   │   └── variables.tf
+│       │   ├── public_vm
+│       │   │   ├── main.tf
+│       │   │   └── variables.tf
+│       │   └── storage
+│       │       ├── main.tf
+│       │       ├── outputs.tf
+│       │       └── variables.tf
+│       ├── firewall_rules
+│       │   ├── main.tf
+│       │   └── variables.tf
+│       ├── network
+│       │   ├── nat
+│       │   │   ├── main.tf
+│       │   │   └── variables.tf
+│       │   ├── subnet
+│       │   │   ├── main.tf
+│       │   │   └── variables.tf
+│       │   └── vpc
+│       │       ├── main.tf
+│       │       ├── outputs.tf
+│       │       └── variables.tf
+│       └── storage_bucket
+│           ├── main.tf
+│           └── variables.tf
+└── tf_state_bucket
+    ├── main.tf
+    ├── providers.tf
+    ├── terraform.tfstate
+    ├── terraform.tfstate.backup
+    └── variables.tf
+
 18 directories, 43 files
   ```
 </details>
@@ -95,9 +96,9 @@ Additionally, the modules available to be provisioned are the “base” module 
 #### Ansible structure <a name="ansible"></a>
 As previously indicated, using Ansible allows the creation of configuration workflows based on playbooks and tags. Ansible effectively  communicates with the google cloud API obtaining the instances metadata which contains the private and public IP address of every node and groups them according to their names.
 
-The “generate_ssh_keys” playbook contained in the “build_projcet” folder generates a bastion SSH key pair used for authenticating instance.  the “main.yaml” playbook generates the “env.tfvars” file with project configurations based on “ceph_cluster_configuration.yaml” located in the project root folder. It also executes the terraform commands to create the tf state bucket.
+The “generate_ssh_keys” playbook contained in the “build_projcet” folder generates a bastion SSH key pair used for authenticating instance. the “main.yaml” playbook generates the “env.tfvars” file with project configurations based on “ceph_cluster_configuration.yaml” located in the project root folder. It also executes the terraform commands to create the tf state bucket.
 
-Additionally, the “build_local_proxy.yaml” playbook, modifies locally the /etc/ssh/ssh_config file to allow jumping to 10.10.0.0/24 private subnet using the bastion host.
+Additionally, the "init.yaml” playbook, modifies locally the /etc/ssh/ssh_config file to allow jumping to 10.10.0.0/24 private subnet using the bastion host.
 
 Lastly, within the cephCluster folder are present the playbooks responsible for configuring the Ceph cluster separated depending of his role.
 
@@ -108,7 +109,7 @@ Lastly, within the cephCluster folder are present the playbooks responsible for 
 ansible
 ├── ansible.cfg
 ├── bastion
-│   └── build_local_proxy.yaml
+│   └── init.yaml
 ├── build_project
 │   ├── generate_ssh_keys.yaml
 │   └── main.yaml
@@ -116,29 +117,30 @@ ansible
 │   ├── cephManager.yaml
 │   ├── cephMonitor.yaml
 │   ├── cephOSD.yaml
-│   └── cephRBD.yaml
+│   ├── cephRBD.yaml
+│   └── cephRestoreMonitor.yaml
 ├── common
-│   └── init.yaml
+│   └── init_task.yaml
 └── inventory
     └── inventory.gcp.yml
 
-6 directories, 10 files
+6 directories, 11 files
   ```
 </details>
 
 ### Configurations <a name="configs"></a>
-To Configure a Ceph cluster are available multiple ways possible. In this project, we have chosen a manual installation which challenges us to enhance our understanding of the technology and learn how the tool works behind the scenes.
+To Configure a Ceph cluster are available multiple possible ways. However, In this project, we have chosen a manual installation which challenges us to enhance our understanding of the technology and learn how the tool works behind the scenes.
 
 The first component that we configured is the "monitor" node. Initially, “cephMonitor.yaml” ansible-playbook executes the command `uuidgen` to generate the ID of the Ceph cluster. This id is inserted into the the “ceph.conf” like other parameters used for cluster configuration: `cluster network`, `monitor host` and `mon initial members`. Furthermore, to authenticate the remaining Ceph resources we generated keyring resources that are used throughout the cluster like the `ceph monitor`, `client admin` and `osd bootstrap`. Concluded the generation of keys will be created the monitor map that has the state of the entire cluster with the command `monmaptool --create --add {{ item.instance_name }} {{item.private_ip}} --fsid {{ item.uuid }} /etc/ceph/monmap`. Finally, after creating the previous resources will be created the cluster per se using the command `monmaptool --create --add {{ item.instance_name }} {{item.private_ip}} --fsid {{ item.uuid }} /etc/ceph/monmap` and start the daemon. 
 
-Similarly, the “cephManager.yaml”, “cephOSD.yaml”  and the “cephRBD” relocate the configuration files provided by the “cephMonitor.yaml” playbook. Whereas, the cephManager only starts the manager daemon. The cephOSD,yaml partitioned the disk at 100% of its capacity and created a volume with the logical volume manager. For example, in this project, the HDDs are mounted in `/dev/sda`, `/dev/sdb` and `/dev/sdc. However, upon instance creation, there is already a volume mounted at “/dev/sda1. Which is not included in the Ceph storage system. 
+Similarly, the `cephManager.yaml`, `cephOSD.yaml` and the `cephRBD.yaml` relocate the configuration files provided by the “cephMonitor.yaml” playbook. Whereas, the cephManager only starts the manager daemon. The cephOSD,yaml partitioned the disk at 100% of its capacity and created a volume with the lvm tool. For example, in this project, the HDDs are mounted in `/dev/sda`, `/dev/sdb` and `/dev/sdc`. However, upon instance creation, there is already a volume mounted at “/dev/sda1. Which we descarded for the Ceph storage system. 
 
-Conversely, the “cephRBD”, configures the client that will create and initialize the OSD node pool and create an XFS filesystem `/dev/rbd0` in the `/mnt` directory. Considering that the volumes created do not have the full capacity available and in the worst-case scenario of losing 1 OSD node, to prevent data corruption within the pool is created the file system without the capacity comparable to one node resulting in nodes as the failover backup. Moreover, the “cephRDB” playbook installs and configures a Postgres database which has a random database with 200 rows of random data to simulate the storage consumption from the Ceph cluster.
+Conversely, the `cephRBD.yaml`, configures the client that will create and initialize the object storage pool and create an XFS filesystem `/dev/rbd0` in the `/mnt` directory. Natively, the crated volumes don't have the full capacity available and in the worst-case scenario losing 1 OSD node could result in corruption data within the pool. Therefore, the file system was created with proximatly less 33% of his full capacityity for failover purposes. Moreover, the “cephRDB” playbook installs and configures a Postgres database which has a random database with 200 rows of random data to simulate the storage consumption from the Ceph cluster.
 
 
 
 ### Backup strategies <a name="bk"></a>
-Defining backups and restore procedures grants data protection and in downtime scenarios a lower MTTR (Mean time to recover). For the project was designing backup strategies for the monitor node and the Postgres database located in the RBD node. For the monitor node after the installation, the backup procedure which consists of a crontab job that is triggered by the system every minute thereby executing a script that synchronizes with the manager node the files in the `/etc/ceph` and `/var/lib/ceph` folders. Moreover after each execution the output is stored in a log file located in `/home/bastion/crontab.log` to augment the visability towards the backup procedure. To ensure that the data is not corrupted, before generation the backup is verified if the monitor daemon is active otherwise the process will be skipped.
+Defining backups and restore procedures grants data protection and lower the MTTR (Mean time to recover). For scope of the project was designing backup strategies for the monitor node and the Postgres database located in the RBD node. For the monitor is installed a crontab job that will be triggered by the system every minute thereby executing a script that synchronizes with the manager node the files in the `/etc/ceph` and `/var/lib/ceph` folders. Moreover after each execution the output is stored in a log file located in `/home/bastion/crontab.log` to augment the visability towards the backup procedure and to ensure data integrity, before the backup generation the scipt verifies if the monitor daemon is active otherwise the process will be skipped.
 
 <details >
   <summary>monitor crontab logs</summary>
@@ -153,7 +155,7 @@ service is not active quiting...
 ```
 </details>
 
-Similarly, the backup procedures for the RBD Postgres database also take into consideration if the Postgres service is active. However, this procedure has 2 levels of backups. The first level is essentially a partial backup which is if the node keeps running although, the Postgres service is down due to errors the cronjob compresses the Postgres data within a tar.gz file and stores it locally in `/home/bastion/postgres/backups`. On the other hand, the second procedure is for scenarios where the node is completely offline and the data inside is unavailable. Therefore the data is additionally sent with the `rsync` command to `/home/bastion/postgres/backups` located in the manager node.
+Similarly, the backup procedures for the RBD Postgres database also take into consideration if the Postgres service is active. However, this procedure has 2 levels of backups. The first level is essentially a partial backup when the node is still online although, the Postgres service is down due to errors. The cronjob compresses the Postgres data within a tar.gz file and stores it locally in `/home/bastion/postgres/backups` the latest 5 backups. On the other hand, the second procedure is for scenarios where the node is completely offline and the data inside is unavailable. Therefore the data is additionally sent with the `rsync` command to `/home/bastion/postgres/backups` located in the manager node. 
 
 <details >
   <summary>RBD crontab logs</summary>
@@ -190,7 +192,7 @@ Similarly, the backup procedures for the RBD Postgres database also take into co
 Troubleshooting is a crucial process to identify and resolve issues and raise awareness about what is happening in the system. To troubleshoot failing or misconfigured services multiple commands were used. For instance, if the service is failing the recommended troubleshooting steps are checking the status of the service with the `systemctl status (service name)` command or analysing logs with the command `journalctl -u (service name).` The logs located in `/var/log/ceph/` grant an efficient debugging solution. Additionally, the `ceph -s` command can be used to analyze the status of the cluster or to check the health status by executing the `ceph health` command. On the other hand, the command `ceph df` analyzes data usage and distribution among pools. Finally, the `ceph ODS dump` command provides detailed information about the OSD. It can also be used simultaneously for other resources within the Ceph environment.
 
 ### System Recovery <a name="recovery"></a>
-In the event of a failure, system recovery can be achieved by restoring the pre-established backups. The restoring process for the monitor involves executing the cephRestoreMonitor playbook, which re add the data to their respective directories. Following the successful restoration of data, the service is then ready to be restarted. Similarly to the monitor restore, the postgres database recovery is quite similar diverging if is used the backup stored locally or remotely in the manager node. Moreover, to accomplish the database restore the `cephRBD` playbook with the tag restore is sufficient to recover the database service locally.
+In the event of a failure, system recovery can be achieved by restoring the pre-established backups. The restoring process for the monitor involves executing the cephRestoreMonitor playbook, which adds the data to their respective directories. After restoring the data, the service is then ready to be restarted. Similarly to the monitor restore, the postgres database recovery is quite similar diverging if is used the backup stored locally or remotely in the manager node. Moreover, to accomplish the database restore the `cephRBD` playbook with the tag restore is sufficient to recover the database service locally.
 
 ## How to setup the ceph project <a name="setup"></a>
 ### Prerequisites<a name="req"></a>
@@ -214,13 +216,13 @@ cd SysAdmCephCluster/ansible
 ```bash
 ansible-playbook -i inventory build_project/generate_ssh_keys.yaml --tags ssh_keys -vv
 ```
-This playbook generates SSH keys for the necessary environment access. These keys are stored locally in the root directory of the repository.
+Generates SSH keys for the necessary environment access. These keys are stored locally in the root directory of the repository.
 
 #### create tf state bucket, build tfvars and build inventory
 ```bash
 ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=apply"  -vv
 ```
-Example of a ansible command that generates the inventory used by ansible to retrieve all instances metadata deployed in the project. The data used from that API are: The private IP address from ceph nodes, the public IP address from bastion host and the instance hostnames.
+Generates the inventory used by ansible to retrieve all instances metadata deployed in the project. The data used from that API are: The private IP address from ceph nodes, the public IP address from bastion host and the instance hostnames.
 Furthermore, this playbook also generates the tf vars used by the terraform in this project.
 
 The variables used in both ansible and terraform are set on `ceph_cluster_configuration.yml`  file in order to make the project dynamic and adjustable to everyone.
@@ -238,7 +240,7 @@ cd SysAdmCephCluster/terraform
 ./executor.sh cephCluster apply
 ```
 
-After the creation of the tfstate bucket, the following step is to provision the whole infrastructure that will host the ceph cluster. The infrastructure is splitted into 2 modules. The **base** and the **cephCluster**. Whereas the base module file is responsible for provision 1 VPC, 2 Subnets (private and public access subnet), firewall rules, Nat router and bastion host. On other hand, the cephCluster module is responsible for provisioning all resources directly related with the ceph cluster such as the Manager and monitor nodes, the OSD, RDB, and 2 HDD volumes per OSD node.
+After the creation of the tfstate bucket, the following step is to provision the whole infrastructure that will host the ceph cluster. The infrastructure is splitted into 2 modules. The `base` and the `cephCluster`. Whereas the base module file is responsible for provision 1 VPC, 2 Subnets (private and public access subnet), firewall rules, Nat router and bastion host. On other hand, the cephCluster module is responsible for provisioning all resources directly related with the ceph cluster such as the Manager and monitor nodes, the OSD, RDB, and by default 2 HDD volumes per OSD node.
 
 
 ##### Generate ssh proxy locally
@@ -249,25 +251,17 @@ ansible-playbook -i inventory bastion/init.yaml --tags ceph_init,apply --ask-bec
 In order to access all the infrastructure, hosted in the private subnet (10.10.0.0/24), for security purpuse is crucial to create a proxy jump between the localhost where the ansible is being executed to the destination network. Therefore, regarding that bastion host that is accessible from the public network on port 22 is being used as a proxy to jump to the Ceph Network.
 The following image shows an example of a ssh_config file after executing the ansible command.
 In this ansible command is passed the `proxy_jump` tag, and the `--ask-become-pass` to escalate priveligies to write into `/etc/ssh/ssh_config` file
+
 <details open>
   <summary>/etc/ssh/ssh_config example</summary>
 <IMG src=./resources/ssh_proxy_bastion.png></IMG>
 </details>
 
-
-##### Execute common configurations among all hosts
-```bash
-ansible-playbook -i inventory common/init.yaml -l all --tags ceph_init --key-file "../ssh_keys/idrsa"  -vv
-```
-
-​​After being granted connectivity to the entire environment it will begin the initial configurations with the assistance of ansible. Those configurations will grant the authentication between instances. Thus, will be copied the ssh keys generated previously in the beginning of the project to each instance to the bastion home directory.
-In this ansible command is passed the parameters `-l all` to force the execution in every instance, `--tags ceph_init` and the reference to the private ssh key used to authenticate in the instances `--key-file "../ssh_keys/idrsa"`.
-
 ##### Configure ceph monitor node
 ```bash
 ansible-playbook -i inventory cephCluster/cephMonitor.yaml -l monitor --tags ceph_init,ceph_monitor,ceph_osd,ceph_rbd,ceph_manager,backup   --key-file "../ssh_keys/idrsa"  -vv
 ```
-The cephMonitor playbook configures the monitor node, and send remotely to the other ceph instances the ceph config file and the keyring to join the ceph cluster.
+The cephMonitor playbook configures the monitor node, generates the backup process, and send remotely the ceph config file and the keyring to other ceph instances.
 
 ##### Configure ceph manager nodes
 ```bash
@@ -277,7 +271,7 @@ ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags cep
 ```bash
 ansible-playbook -i inventory cephCluster/cephManager.yaml -l manager --tags ceph_manager_dashboard --key-file "../ssh_keys/idrsa"  -vv
 ```
-The cephManager playbook configures the manager nodes and enable the ceph dashboard. Based on the tag provided will be configured the ceph_manager if provided the tag **ceph_manager**  whereas if the tag provided is **ceph_manager_dashboard** will enable the dashboard plugin and configureing the user and password.
+The cephManager playbook configures the manager nodes and enable the ceph dashboard. Based on the tag provided will be configured the ceph_manager if provided the tag `ceph_manager`  whereas if the tag provided is `ceph_manager_dashboard` will enable the dashboard plugin and configureing the user and password.
 
 
 ##### configure osd node
@@ -295,7 +289,6 @@ The cephOSD playbook formats the entire HDD volume and mount it on `/dev/sdb1`, 
 ```bash
 ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags ceph_init,ceph_rbd,database,backup --key-file "../ssh_keys/idrsa"  -vv
 ```
-The CephRDB playbook
 <details open>
   <summary>Client (RDB Node)</summary>
 <IMG src=./resources/rdb_nodes.png></IMG>
@@ -303,65 +296,7 @@ The CephRDB playbook
 
 
 The cephRBD playbook mainly creates the RBD Pool, maps the block device, format the volume in XFS format, and mount the volume `/dev/rbd0` into a mounted directory `/mnt`.
-Furthermore, when is additionaly inserted **database** tag will install postgres, sync the default postgres data from `/var/lib/postgresql/16/main/` to `/mnt/database/lib/postgresql/16/main/`, modifies the data directory parameter from postgres configuration file and create a ramdom table with 200 rows with ramdom data. On other hand, with the tag **backup** the playbook will create a directory (`/home/bastion/postgres/backup`) where is located the database backups, creates a crontab job that every minute generates a backup file compressed in `tar.gz`` format.
-
-### Usefull commands
-##### Remote access bastion host
-```bash
-cd SysAdmCephCluster
-ssh -i ssh_keys/idrsa  bastion@(bastion public ip)
-```
-##### Remote access ceph instances
-```bash
-cd SysAdmCephCluster/ansible
-ssh (ceph instance private ip)
-```
-
-##### ceph commands to check the cluster status
-```bash
-ceph -s
-ceph osd tree
-ceph df 
-ceph osd df 
-```
-
-
-##### Access dashboard via proxyjump
-```bash
-cd SysAdmCephCluster
-ssh -i ../ssh_keys/idrsa -L 127.0.0.1:8443:(ceph_manager_private_address):8443 bastion@(bastion_public_address)
-```
-
-
-### Restoring process
-#### restore monitor
-```bash
-ansible-playbook -i inventory cephCluster/cephRestoreMonitor.yaml --tags ceph_init,monitor_restore,monitor_restore_service   --key-file "../ssh_keys/idrsa"  -vv
-```
-The recovery of monitor functionalites is made
-##### restore database in rdb node
-```bash
-ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags restore --key-file "../ssh_keys/idrsa"  -vv
-```
-
-### Destroy cluster
-```bash
-cd SysAdmCephCluster/terraform
-
-./executor.sh cephCluster destroy
-./executor.sh base destroy
-```
-
-### Destroy tf state bucket
-
-```bash
-cd SysAdmCephCluster/ansible
-
-ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=destroy"  -vv
-```
-
-
-
+Furthermore, when is additionaly inserted `database` tag will install postgres, sync the default postgres data from `/var/lib/postgresql/16/main/` to `/mnt/database/lib/postgresql/16/main/`, modifies the data directory parameter from postgres configuration file and create a ramdom table with 200 rows with ramdom data. On other hand, with the tag `backup`the playbook will create a directory (`/home/bastion/postgres/backup`) where is located the database backups, creates a crontab job that every minute generates a backup file compressed in `tar.gz` format.
 
 ### postgres commands
 <details open>
@@ -393,4 +328,57 @@ ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=des
   ```
 </details>
 
+
+### Usefull commands
+##### Remote access bastion host
+```bash
+cd SysAdmCephCluster/ansible
+ssh -i ../ssh_keys/idrsa  bastion@(bastion public ip)
+```
+##### Remote access ceph instances
+```bash
+ssh (ceph instance private ip)
+```
+
+##### ceph commands to check the cluster status
+```bash
+ceph -s
+ceph osd tree
+ceph df 
+ceph osd df 
+```
+
+
+##### Access dashboard via proxyjump
+```bash
+cd SysAdmCephCluster
+ssh -i ../ssh_keys/idrsa -L 127.0.0.1:8443:(ceph_manager_private_address):8443 bastion@(bastion_public_address)
+```
+
+### Restoring process
+#### restore monitor
+```bash
+ansible-playbook -i inventory cephCluster/cephRestoreMonitor.yaml --tags ceph_init,monitor_restore,monitor_restore_service   --key-file "../ssh_keys/idrsa"  -vv
+```
+
+##### restore database in rdb node
+```bash
+ansible-playbook -i inventory cephCluster/cephRBD.yaml -l rbd --tags restore --key-file "../ssh_keys/idrsa"  -vv
+```
+
+### Destroy cluster
+```bash
+cd SysAdmCephCluster/terraform
+
+./executor.sh cephCluster destroy
+./executor.sh base destroy
+```
+
+### Destroy tf state bucket
+
+```bash
+cd SysAdmCephCluster/ansible
+
+ansible-playbook -i inventory build_project/main.yaml  --extra-vars "command=destroy"  -vv
+```
 
